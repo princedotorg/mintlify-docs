@@ -1,0 +1,515 @@
+---
+title: "Premium Purchase Webhooks"
+description: "Integrate premium purchase webhooks to activate premium features in real-time"
+icon: "crown"
+---
+
+Receive real-time notifications when users purchase premium tiers for your bot. Rankly sends webhook events that enable you to activate premium features immediately without polling.
+
+## Overview
+
+When a user purchases a premium tier, Rankly delivers an HTTP POST request to your configured webhook endpoint. This allows your bot to:
+
+- ✨ Activate premium features instantly
+- 🔄 Process transactions in real-time
+- 📊 Track premium user base accurately
+- 🎯 Handle both user and server-level premium
+
+<Info>
+Premium webhooks are separate from vote webhooks. Ensure you're using the correct webhook secret (`RANKLY_PREMIUM_WEBHOOK_SECRET`).
+</Info>
+
+## Webhook Delivery
+
+### Request Format
+
+All premium purchase webhooks are delivered as POST requests with JSON payloads:
+
+```bash
+POST https://your-endpoint.com/webhook/premium
+Content-Type: application/json
+X-Webhook-Signature: <hmac_sha256_hex>
+```
+
+### Payload Structure
+
+<CodeBlock language="json" title="Premium Purchase Event">
+```json
+{
+  "event": "premium_purchase",
+  "purchaseId": "1732525200000-987654321098765432",
+  "timestamp": "2025-11-25T10:00:00.000Z",
+  "buyer": {
+    "userId": "987654321098765432",
+    "username": "exampleuser"
+  },
+  "tier": {
+    "id": "pro-monthly",
+    "name": "Pro Plan",
+    "duration": "monthly",
+    "planType": "user"
+  },
+  "serverId": null
+}
+```
+</CodeBlock>
+
+### Field Reference
+
+<ResponseField name="event" type="string" required>
+Event identifier. Always `premium_purchase` for premium webhooks.
+</ResponseField>
+
+<ResponseField name="purchaseId" type="string" required>
+Unique identifier for the transaction. Use this for deduplication and audit trails.
+</ResponseField>
+
+<ResponseField name="timestamp" type="string" required>
+ISO 8601 formatted timestamp when the purchase occurred.
+</ResponseField>
+
+<ResponseField name="buyer" type="object" required>
+<Expandable title="Buyer Object">
+<ResponseField name="userId" type="string" required>
+The Discord user ID of the purchaser.
+</ResponseField>
+
+<ResponseField name="username" type="string" required>
+The Discord username of the purchaser.
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="tier" type="object" required>
+<Expandable title="Tier Object">
+<ResponseField name="id" type="string" required>
+The unique identifier of the tier (e.g., `pro-monthly`).
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+Display name of the tier (e.g., `Pro Plan`).
+</ResponseField>
+
+<ResponseField name="duration" type="enum" required>
+Subscription length: `weekly`, `monthly`, or `lifetime`.
+</ResponseField>
+
+<ResponseField name="planType" type="enum" required>
+Plan scope: `user` (personal) or `server` (guild-wide).
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="serverId" type="string | null">
+Discord server ID. Only present when `planType` is `server`.
+</ResponseField>
+
+## Plan Types Explained
+
+| Type | Scope | `serverId` |
+|------|-------|-----------|
+| **user** | Applies to purchaser's account across all servers | `null` |
+| **server** | Applies to a specific Discord server | Discord Server ID |
+
+<Tip>
+User-level premium is ideal for personal features, while server-level premium works great for server management features.
+</Tip>
+
+## Signature Verification
+
+All incoming webhook requests must be verified using the `X-Webhook-Signature` header. This prevents unauthorized or spoofed requests.
+
+### Verification Steps
+
+1. Extract the `X-Webhook-Signature` header
+2. Stringify the JSON payload exactly as received
+3. Compute HMAC SHA256 using your webhook secret
+4. Use timing-safe comparison to validate
+
+<Tabs>
+<Tab title="Node.js">
+```javascript
+const crypto = require('crypto');
+
+function verifyWebhookSignature(payload, signature, secret) {
+  if (!signature || !secret) {
+    return false;
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(JSON.stringify(payload))
+    .digest('hex');
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    );
+  } catch {
+    return false;
+  }
+}
+```
+</Tab>
+
+<Tab title="Python">
+```python
+import hmac
+import hashlib
+import json
+
+def verify_webhook_signature(payload, signature, secret):
+    expected_signature = hmac.new(
+        secret.encode('utf-8'),
+        json.dumps(payload, separators=(',', ':')).encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(signature, expected_signature)
+```
+</Tab>
+
+<Tab title="Go">
+```go
+package main
+
+import (
+    "crypto/hmac"
+    "crypto/sha256"
+    "crypto/subtle"
+    "encoding/hex"
+    "encoding/json"
+)
+
+func verifyWebhookSignature(payload interface{}, signature string, secret string) bool {
+    payloadBytes, err := json.Marshal(payload)
+    if err != nil {
+        return false
+    }
+
+    mac := hmac.New(sha256.New, []byte(secret))
+    mac.Write(payloadBytes)
+    expectedSignature := hex.EncodeToString(mac.Sum(nil))
+
+    return subtle.ConstantTimeCompare([]byte(signature), []byte(expectedSignature)) == 1
+}
+```
+</Tab>
+</Tabs>
+
+<Warning>
+Always verify signatures before activating premium features. Never trust unverified requests.
+</Warning>
+
+## Complete Handler Implementation
+
+Here's a production-ready webhook handler with signature verification, idempotency, and proper error handling:
+
+<CodeBlock language="javascript" title="Premium Webhook Handler">
+```javascript
+const crypto = require('crypto');
+const express = require('express');
+
+const app = express();
+app.use(express.json());
+
+const WEBHOOK_SECRET = process.env.RANKLY_PREMIUM_WEBHOOK_SECRET;
+
+function verifyWebhookSignature(payload, signature, secret) {
+  if (!signature || !secret) {
+    return false;
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(JSON.stringify(payload))
+    .digest('hex');
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    );
+  } catch {
+    return false;
+  }
+}
+
+function calculateExpiry(duration) {
+  const now = new Date();
+
+  switch (duration) {
+    case 'weekly':
+      return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    case 'monthly':
+      const monthly = new Date(now);
+      monthly.setMonth(monthly.getMonth() + 1);
+      return monthly;
+    case 'lifetime':
+      return null;
+    default:
+      throw new Error(`Unknown duration: ${duration}`);
+  }
+}
+
+app.post('/webhook/premium', async (req, res) => {
+  const signature = req.headers['x-webhook-signature'];
+  const payload = req.body;
+
+  // Verify signature before processing
+  if (!verifyWebhookSignature(payload, signature, WEBHOOK_SECRET)) {
+    console.error('Webhook signature verification failed');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  const { purchaseId, buyer, tier, serverId } = payload;
+
+  // Check for duplicates
+  const existingPurchase = await database.purchases.findOne({ purchaseId });
+  if (existingPurchase) {
+    return res.status(200).json({ received: true, duplicate: true });
+  }
+
+  // Calculate expiry
+  const expiresAt = calculateExpiry(tier.duration);
+
+  console.log(`Premium purchase: ${tier.name} by ${buyer.username} (${buyer.userId})`);
+
+  try {
+    // Record the purchase
+    await database.purchases.insertOne({ 
+      purchaseId, 
+      processedAt: new Date() 
+    });
+
+    // Activate premium based on plan type
+    if (tier.planType === 'user') {
+      await activateUserPremium({
+        discordId: buyer.userId,
+        tierId: tier.id,
+        tierName: tier.name,
+        expiresAt,
+        purchaseId
+      });
+    } else if (tier.planType === 'server') {
+      await activateServerPremium({
+        guildId: serverId,
+        tierId: tier.id,
+        tierName: tier.name,
+        expiresAt,
+        purchaseId,
+        purchasedBy: buyer.userId
+      });
+    }
+
+    return res.status(200).json({ received: true, purchaseId });
+  } catch (error) {
+    console.error('Error processing premium purchase:', error);
+    return res.status(500).json({ error: 'Processing failed' });
+  }
+});
+
+async function activateUserPremium(data) {
+  // Insert or update in your database
+  console.log(`Activated ${data.tierName} for user ${data.discordId}`);
+}
+
+async function activateServerPremium(data) {
+  // Insert or update in your database
+  console.log(`Activated ${data.tierName} for server ${data.guildId}`);
+}
+
+app.listen(3000, () => {
+  console.log('Premium webhook server running on port 3000');
+});
+```
+</CodeBlock>
+
+## Duration Handling
+
+Calculate expiry dates correctly based on subscription type:
+
+| Duration | Calculation | Example |
+|----------|-------------|---------|
+| `weekly` | Current date + 7 days | Today + 1 week |
+| `monthly` | Current date + 1 month | Dec 25 → Jan 25 |
+| `lifetime` | Never expires | `null` |
+
+<Tip>
+For monthly subscriptions, use proper calendar month addition instead of adding 30 days to handle varying month lengths correctly.
+</Tip>
+
+## Response Requirements
+
+Your endpoint must meet these requirements for reliable webhook processing:
+
+| Requirement | Specification |
+|-------------|----------------|
+| **Response Time** | Return within 5 seconds |
+| **Success Status** | HTTP `200` to acknowledge receipt |
+| **Idempotency** | Handle duplicate deliveries gracefully |
+| **Retry Behavior** | Non-2xx responses trigger retries |
+
+### Recommended Response
+
+```json
+{
+  "received": true,
+  "purchaseId": "1732525200000-987654321098765432"
+}
+```
+
+## Idempotency & Deduplication
+
+Always implement idempotency to handle potential duplicate deliveries:
+
+```javascript
+app.post('/webhook/premium', async (req, res) => {
+  const { purchaseId } = req.body;
+
+  // Check if already processed
+  const existingPurchase = await database.purchases.findOne({ purchaseId });
+  if (existingPurchase) {
+    // Return success to prevent retries
+    return res.status(200).json({ received: true, duplicate: true });
+  }
+
+  // Record immediately to prevent race conditions
+  await database.purchases.insertOne({ 
+    purchaseId, 
+    processedAt: new Date() 
+  });
+
+  // Activate premium...
+  // Process asynchronously to avoid timeout
+});
+```
+
+<Tip>
+Record the purchase ID in your database immediately after verification to prevent race conditions in high-traffic scenarios.
+</Tip>
+
+## Database Schema
+
+### User Premium
+
+```sql
+CREATE TABLE user_premium (
+  id SERIAL PRIMARY KEY,
+  discord_id VARCHAR(20) NOT NULL UNIQUE,
+  tier_id VARCHAR(50) NOT NULL,
+  tier_name VARCHAR(100) NOT NULL,
+  expires_at TIMESTAMP NULL,
+  purchase_id VARCHAR(100) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_user_premium_discord_id ON user_premium(discord_id);
+CREATE INDEX idx_user_premium_expires_at ON user_premium(expires_at);
+```
+
+### Server Premium
+
+```sql
+CREATE TABLE server_premium (
+  id SERIAL PRIMARY KEY,
+  guild_id VARCHAR(20) NOT NULL UNIQUE,
+  tier_id VARCHAR(50) NOT NULL,
+  tier_name VARCHAR(100) NOT NULL,
+  expires_at TIMESTAMP NULL,
+  purchase_id VARCHAR(100) NOT NULL UNIQUE,
+  purchased_by VARCHAR(20) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_server_premium_guild_id ON server_premium(guild_id);
+CREATE INDEX idx_server_premium_expires_at ON server_premium(expires_at);
+```
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Verify Signatures" icon="shield-check">
+    Always validate webhook signatures using timing-safe comparison before processing any data.
+  </Card>
+  
+  <Card title="Use HTTPS" icon="lock">
+    Ensure your webhook endpoint uses TLS encryption to protect sensitive data in transit.
+  </Card>
+  
+  <Card title="Rotate Secrets" icon="key">
+    Regenerate webhook secrets immediately if compromised via the Rankly dashboard.
+  </Card>
+  
+  <Card title="Audit Trails" icon="list">
+    Maintain records of all `purchaseId` values for compliance and support purposes.
+  </Card>
+  
+  <Card title="Validate Plan Types" icon="check-circle">
+    Handle both `user` and `server` plan types correctly in your activation logic.
+  </Card>
+  
+  <Card title="Async Processing" icon="clock">
+    Process premium activation asynchronously to avoid timeout errors and improve reliability.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<Accordion title="Webhooks not received">
+**Cause:** Endpoint not publicly accessible
+
+**Solutions:**
+- Verify your server is reachable from the internet
+- Check firewall rules allow inbound traffic
+- Ensure correct endpoint URL in Rankly dashboard
+- Test with curl: `curl -X POST https://your-endpoint.com/webhook/premium`
+</Accordion>
+
+<Accordion title="Signature verification fails">
+**Cause:** Wrong secret or payload modification
+
+**Solutions:**
+- Confirm you're using `RANKLY_PREMIUM_WEBHOOK_SECRET` (not vote secret)
+- Don't modify the payload before verification
+- Check for encoding issues (UTF-8)
+- Regenerate secret if compromised
+</Accordion>
+
+<Accordion title="Missing serverId">
+**Cause:** Expected for server-type plans
+
+**Solutions:**
+- `serverId` is only present when `planType` is `server`
+- Handle `null` value gracefully for user plans
+- Check payload structure matches your plan type
+</Accordion>
+
+<Accordion title="Duplicate activations">
+**Cause:** Missing idempotency implementation
+
+**Solutions:**
+- Implement deduplication using `purchaseId`
+- Record purchase IDs before activation
+- Use database constraints for uniqueness
+</Accordion>
+
+<Accordion title="Timeout errors">
+**Cause:** Processing takes too long
+
+**Solutions:**
+- Return HTTP 200 immediately
+- Process premium activation asynchronously
+- Use background jobs (Bull, Celery, etc.)
+- Add monitoring and error logging
+</Accordion>
+
+## Next Steps
+
+- 📖 Review [Vote Webhooks](/bots/vote) for user engagement tracking
+- 🔧 Set up webhook secret rotation in your infrastructure
+- 📊 Implement monitoring for failed activations
+- 🧪 Test with sandbox tier purchases before going live

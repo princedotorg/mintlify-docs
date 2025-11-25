@@ -1,0 +1,716 @@
+---
+title: "Vote Webhooks"
+description: "Receive real-time vote notifications and reward voters automatically"
+icon: "webhook"
+---
+
+Integrate webhooks to respond to votes in real-time. Automatically grant rewards, track voting patterns, and build engagement features.
+
+## Overview
+
+When a user votes for your server on Rankly, a webhook delivers a JSON payload to your configured endpoint. This enables you to:
+
+- 🎁 Grant instant rewards to voters
+- 📊 Track voting patterns and trends
+- 🔄 Automate community engagement
+- 🎯 Build loyalty programs
+
+<Info>
+Webhooks are completely optional. Your server earns credits regardless of webhook configuration.
+</Info>
+
+## Configuration
+
+Set up webhooks from your server dashboard:
+
+<Steps>
+  <Step title="Navigate to Server Settings">
+    Go to your server dashboard on rankly.live
+  </Step>
+  
+  <Step title="Find Vote Webhooks">
+    Locate the "Vote Webhooks" section in settings
+  </Step>
+  
+  <Step title="Enter Webhook URL">
+    Paste your endpoint URL (must use HTTPS)
+  </Step>
+  
+  <Step title="Add Authorization (Optional)">
+    Configure an authorization header for additional security
+  </Step>
+  
+  <Step title="Test Your Webhook">
+    Click "Test Webhook" to send a test payload
+  </Step>
+  
+  <Step title="Save Configuration">
+    Save your settings and you're ready!
+  </Step>
+</Steps>
+
+## Webhook Delivery
+
+### Request Format
+
+All vote webhooks are delivered as POST requests:
+
+```bash
+POST https://your-endpoint.com/webhook/votes
+Content-Type: application/json
+Authorization: <your-header> (if configured)
+```
+
+### Payload Structure
+
+<CodeBlock language="json" title="Vote Event">
+```json
+{
+  "userId": "987654321098765432",
+  "serverId": "123456789012345678",
+  "timestamp": "2025-11-25T10:00:00.000Z",
+  "creditsAwarded": true,
+  "adBlocker": false,
+  "creditDenialReason": null,
+  "test": false
+}
+```
+</CodeBlock>
+
+### Field Reference
+
+<ResponseField name="userId" type="string" required>
+The Discord user ID of the voter. Use this to identify the user in your bot.
+</ResponseField>
+
+<ResponseField name="serverId" type="string" required>
+Your server's Discord ID. Useful if handling webhooks for multiple servers.
+</ResponseField>
+
+<ResponseField name="timestamp" type="string" required>
+ISO 8601 formatted timestamp of when the vote occurred.
+</ResponseField>
+
+<ResponseField name="creditsAwarded" type="boolean" required>
+Whether Rankly credits were awarded to the server for this vote. Can be `false` for various reasons (duplicate vote, ad blocker, etc.).
+</ResponseField>
+
+<ResponseField name="adBlocker" type="boolean" required>
+`true` if an ad blocker was detected during the voting process.
+</ResponseField>
+
+<ResponseField name="creditDenialReason" type="string | null">
+Explanation if credits weren't awarded. Value is `null` when credits are awarded.
+</ResponseField>
+
+<ResponseField name="test" type="boolean" required>
+`true` if this is a test webhook from the dashboard. `false` for real votes.
+</ResponseField>
+
+## Understanding Vote Context
+
+Use these fields to determine reward eligibility:
+
+| Scenario | creditsAwarded | adBlocker | Action |
+|----------|--------|-----------|--------|
+| Normal vote | `true` | `false` | ✅ Grant full reward |
+| Ad blocker used | `false` | `true` | ⚠️ Consider reduced reward |
+| Duplicate vote | `false` | `false` | ℹ️ Skip reward or acknowledge |
+| Test from dashboard | any | any | 🧪 Log but don't reward |
+
+<Tip>
+Even if `creditsAwarded` is `false`, consider rewarding users for voting. Your server benefits from engagement regardless!
+</Tip>
+
+## Authorization & Security
+
+### Optional Authorization Header
+
+Configure a custom authorization header for additional security:
+
+Common formats:
+```
+Authorization: Bearer your-secret-token
+Authorization: Basic base64-credentials
+Authorization: your-simple-secret
+```
+
+Rankly will include this header in every webhook request:
+
+```javascript
+const authHeader = req.headers['authorization'];
+if (authHeader !== process.env.RANKLY_WEBHOOK_AUTH) {
+  return res.status(401).json({ error: 'Unauthorized' });
+}
+```
+
+### Best Practices
+
+- ✅ Use HTTPS endpoints (required)
+- ✅ Configure authorization headers
+- ✅ Validate payload structure
+- ✅ Log webhook activity
+- ✅ Implement rate limiting
+- ✅ Return 200 quickly and process asynchronously
+
+## Implementation Examples
+
+### Node.js with Express
+
+<CodeBlock language="javascript" title="Basic Express Handler">
+```javascript
+const express = require('express');
+const app = express();
+
+app.use(express.json());
+
+const EXPECTED_AUTH = process.env.RANKLY_WEBHOOK_AUTH;
+
+app.post('/webhook/votes', (req, res) => {
+  // Verify authorization header if configured
+  const authHeader = req.headers['authorization'];
+  if (EXPECTED_AUTH && authHeader !== EXPECTED_AUTH) {
+    console.error('Unauthorized webhook request');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { userId, serverId, creditsAwarded, adBlocker, test } = req.body;
+
+  // Ignore test webhooks
+  if (test) {
+    console.log('✅ Test webhook received successfully');
+    return res.status(200).json({ received: true, test: true });
+  }
+
+  console.log(`Vote: User ${userId} voted for server ${serverId}`);
+
+  // Grant reward if credits were awarded
+  if (creditsAwarded && !adBlocker) {
+    grantVoteReward(userId, serverId);
+  }
+
+  // Always return 200 immediately
+  return res.status(200).json({ received: true });
+});
+
+async function grantVoteReward(userId, serverId) {
+  // Implement your reward logic
+  console.log(`Granted reward to ${userId}`);
+}
+
+app.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+```
+</CodeBlock>
+
+### Python with Flask
+
+<CodeBlock language="python" title="Flask Handler">
+```python
+import os
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+
+EXPECTED_AUTH = os.environ.get('RANKLY_WEBHOOK_AUTH')
+
+@app.route('/webhook/votes', methods=['POST'])
+def handle_vote():
+    # Verify authorization
+    auth_header = request.headers.get('Authorization')
+    if EXPECTED_AUTH and auth_header != EXPECTED_AUTH:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    payload = request.json
+    user_id = payload.get('userId')
+    server_id = payload.get('serverId')
+    credits_awarded = payload.get('creditsAwarded')
+    ad_blocker = payload.get('adBlocker')
+    is_test = payload.get('test', False)
+
+    # Ignore test webhooks
+    if is_test:
+        print('✅ Test webhook received')
+        return jsonify({'received': True, 'test': True}), 200
+
+    print(f'Vote: User {user_id} voted for server {server_id}')
+
+    # Grant reward
+    if credits_awarded and not ad_blocker:
+        grant_vote_reward(user_id, server_id)
+
+    return jsonify({'received': True}), 200
+
+def grant_vote_reward(user_id, server_id):
+    # Implement your reward logic
+    pass
+
+if __name__ == '__main__':
+    app.run(port=3000)
+```
+</CodeBlock>
+
+### Discord.py Integration
+
+<CodeBlock language="python" title="Discord Bot Webhook Handler">
+```python
+import discord
+from discord.ext import commands
+from flask import Flask, request, jsonify
+import asyncio
+
+app = Flask(__name__)
+bot = commands.Bot(command_prefix='!')
+
+VOTE_ROLE_ID = 123456789  # Your role ID
+EXPECTED_AUTH = 'your-secret'
+
+@app.route('/webhook/votes', methods=['POST'])
+def handle_vote():
+    # Verify auth
+    if request.headers.get('Authorization') != EXPECTED_AUTH:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    payload = request.json
+    user_id = int(payload['userId'])
+    server_id = int(payload['serverId'])
+    credits_awarded = payload['creditsAwarded']
+    is_test = payload.get('test', False)
+
+    if is_test:
+        return jsonify({'received': True}), 200
+
+    if not credits_awarded:
+        return jsonify({'received': True}), 200
+
+    # Grant role asynchronously
+    asyncio.run_coroutine_threadsafe(
+        grant_vote_role(user_id, server_id),
+        bot.loop
+    )
+
+    return jsonify({'received': True}), 200
+
+async def grant_vote_role(user_id, server_id):
+    try:
+        guild = bot.get_guild(server_id)
+        if not guild:
+            return
+
+        member = await guild.fetch_member(user_id)
+        role = guild.get_role(VOTE_ROLE_ID)
+
+        if member and role:
+            await member.add_roles(role)
+            await member.send('🎉 Thank you for voting!')
+    except Exception as e:
+        print(f'Error granting role: {e}')
+```
+</CodeBlock>
+
+### Discord.js Integration
+
+<CodeBlock language="javascript" title="Discord.js Webhook Handler">
+```javascript
+const express = require('express');
+const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+
+const app = express();
+app.use(express.json());
+
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
+});
+
+const VOTE_ROLE_ID = 'YOUR_ROLE_ID';
+const EXPECTED_AUTH = process.env.RANKLY_WEBHOOK_AUTH;
+
+app.post('/webhook/votes', async (req, res) => {
+  // Verify auth
+  if (EXPECTED_AUTH && req.headers['authorization'] !== EXPECTED_AUTH) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const { userId, serverId, creditsAwarded, test } = req.body;
+
+  if (test) {
+    return res.status(200).json({ received: true });
+  }
+
+  if (!creditsAwarded) {
+    return res.status(200).json({ received: true });
+  }
+
+  try {
+    const guild = await client.guilds.fetch(serverId);
+    const member = await guild.members.fetch(userId);
+    const role = guild.roles.cache.get(VOTE_ROLE_ID);
+
+    if (member && role) {
+      await member.roles.add(role);
+
+      // Send DM
+      const embed = new EmbedBuilder()
+        .setColor('#Green')
+        .setTitle('🎉 Thank you for voting!')
+        .setDescription('You received the Voter role!');
+
+      await member.send({ embeds: [embed] });
+    }
+
+    return res.status(200).json({ received: true, rewarded: true });
+  } catch (error) {
+    console.error('Error:', error);
+    return res.status(200).json({ received: true, rewarded: false });
+  }
+});
+
+client.login(process.env.DISCORD_TOKEN);
+app.listen(3000);
+```
+</CodeBlock>
+
+## Response Requirements
+
+Your endpoint must meet these specifications:
+
+| Requirement | Specification |
+|-------------|----------------|
+| **Protocol** | HTTPS required |
+| **Response Time** | Return within 5 seconds |
+| **Status Code** | HTTP `200` to acknowledge |
+| **Timeout** | Requests timeout after 5 seconds |
+| **Failures** | Don't affect the vote |
+
+### Recommended Response
+
+```json
+{
+  "received": true
+}
+```
+
+<Warning>
+Always return HTTP 200 immediately, even if processing fails. Webhook failures don't affect votes.
+</Warning>
+
+## Idempotency & Deduplication
+
+Implement idempotency to handle potential duplicate deliveries:
+
+<Tabs>
+<Tab title="Redis (Recommended)">
+```javascript
+const Redis = require('redis');
+const redisClient = Redis.createClient();
+
+app.post('/webhook/votes', async (req, res) => {
+  const { userId, serverId, timestamp } = req.body;
+  const voteKey = `vote:${userId}:${serverId}:${timestamp}`;
+
+  // Check if already processed
+  const isDuplicate = await redisClient.exists(voteKey);
+  if (isDuplicate) {
+    return res.status(200).json({ received: true, duplicate: true });
+  }
+
+  // Mark as processed (24-hour expiry)
+  await redisClient.setex(voteKey, 86400, '1');
+
+  // Process vote...
+  return res.status(200).json({ received: true });
+});
+```
+</Tab>
+
+<Tab title="Database">
+```javascript
+app.post('/webhook/votes', async (req, res) => {
+  const { userId, serverId, timestamp } = req.body;
+
+  // Check if already processed
+  const existingVote = await database.votes.findOne({
+    userId,
+    serverId,
+    timestamp: new Date(timestamp)
+  });
+
+  if (existingVote) {
+    return res.status(200).json({ received: true, duplicate: true });
+  }
+
+  // Record immediately (prevents race conditions)
+  await database.votes.insertOne({
+    userId,
+    serverId,
+    timestamp: new Date(timestamp),
+    processed: true
+  });
+
+  // Process vote...
+  return res.status(200).json({ received: true });
+});
+```
+</Tab>
+
+<Tab title="In-Memory (Dev Only)">
+```javascript
+const processedVotes = new Map();
+
+app.post('/webhook/votes', (req, res) => {
+  const { userId, serverId, timestamp } = req.body;
+  const voteKey = `${userId}:${serverId}:${timestamp}`;
+
+  if (processedVotes.has(voteKey)) {
+    return res.status(200).json({ received: true, duplicate: true });
+  }
+
+  processedVotes.set(voteKey, true);
+
+  // Clear after 24 hours
+  setTimeout(() => processedVotes.delete(voteKey), 86400000);
+
+  // Process vote...
+  return res.status(200).json({ received: true });
+});
+```
+</Tab>
+</Tabs>
+
+<Tip>
+Use Redis or database persistence in production. In-memory storage only works for local development.
+</Tip>
+
+## Reward Implementation Patterns
+
+### Role-Based Rewards
+
+```javascript
+async function grantVoteReward(userId, serverId) {
+  const guild = await client.guilds.fetch(serverId);
+  const member = await guild.members.fetch(userId);
+  const role = guild.roles.cache.get(VOTE_ROLE_ID);
+
+  if (member && role) {
+    await member.roles.add(role);
+  }
+}
+```
+
+### Currency-Based Rewards
+
+```javascript
+async function grantVoteReward(userId, serverId) {
+  const rewardAmount = 100; // Your currency
+
+  await database.users.updateOne(
+    { discordId: userId },
+    { $inc: { balance: rewardAmount } }
+  );
+}
+```
+
+### Mixed Rewards
+
+```javascript
+async function grantVoteReward(userId, serverId) {
+  const guild = await client.guilds.fetch(serverId);
+  const member = await guild.members.fetch(userId);
+
+  // Add role
+  if (member) {
+    const role = guild.roles.cache.get(VOTE_ROLE_ID);
+    await member.roles.add(role);
+  }
+
+  // Add currency
+  await database.users.updateOne(
+    { discordId: userId },
+    { $inc: { balance: 100 } }
+  );
+
+  // Send notification
+  await notifyUserOfReward(userId);
+}
+```
+
+## Testing Your Webhook
+
+### Using the Dashboard
+
+1. Navigate to your server settings
+2. Find the "Vote Webhooks" section
+3. Click "Test Webhook"
+4. A test payload will be sent with `"test": true`
+
+### Test Payload Format
+
+```json
+{
+  "userId": "123456789012345678",
+  "serverId": "987654321098765678",
+  "timestamp": "2025-11-25T10:00:00.000Z",
+  "creditsAwarded": true,
+  "adBlocker": false,
+  "creditDenialReason": null,
+  "test": true
+}
+```
+
+<Tip>
+Always check for `"test": true` and skip reward processing for test webhooks.
+</Tip>
+
+### Manual Testing with cURL
+
+```bash
+curl -X POST https://your-endpoint.com/webhook/votes \
+  -H "Content-Type: application/json" \
+  -H "Authorization: your-secret" \
+  -d '{
+    "userId": "123456789012345678",
+    "serverId": "987654321098765678",
+    "timestamp": "2025-11-25T10:00:00.000Z",
+    "creditsAwarded": true,
+    "adBlocker": false,
+    "creditDenialReason": null,
+    "test": true
+  }'
+```
+
+## Best Practices
+
+<CheckCircle title="Process Asynchronously">
+Return HTTP 200 immediately and process rewards in background tasks to avoid timeouts.
+</CheckCircle>
+
+<CheckCircle title="Implement Deduplication">
+Track processed votes to prevent duplicate rewards.
+</CheckCircle>
+
+<CheckCircle title="Reward Generously">
+Even if credits weren't awarded, consider rewarding users for engagement.
+</CheckCircle>
+
+<CheckCircle title="Monitor Failures">
+Log all webhook activity including errors and failures.
+</CheckCircle>
+
+<CheckCircle title="Communicate with Users">
+Send confirmations when users receive rewards.
+</CheckCircle>
+
+<CheckCircle title="Handle Edge Cases">
+Account for deleted users, left guilds, and removed roles.
+</CheckCircle>
+
+## Troubleshooting
+
+<Accordion title="Webhooks not being delivered">
+**Causes:**
+- Endpoint not publicly accessible
+- Using HTTP instead of HTTPS
+- Firewall blocking Rankly IP addresses
+
+**Solutions:**
+- Verify endpoint is publicly reachable: `curl https://your-endpoint.com/webhook/votes`
+- Ensure HTTPS is enabled
+- Check firewall/security group rules
+</Accordion>
+
+<Accordion title="Authorization failures (401 errors)">
+**Causes:**
+- Wrong authorization header value
+- Header format mismatch
+- Secret regenerated in dashboard
+
+**Solutions:**
+- Verify header value matches exactly
+- Check header format (Bearer, Basic, custom)
+- Regenerate and update if changed
+</Accordion>
+
+<Accordion title="Timeout errors">
+**Causes:**
+- Processing takes too long
+- Database queries blocking response
+- External API calls
+
+**Solutions:**
+- Return 200 immediately
+- Process rewards in background job queue
+- Use caching to speed up lookups
+</Accordion>
+
+<Accordion title="Duplicate rewards being granted">
+**Causes:**
+- Missing idempotency implementation
+- Multiple webhook deliveries
+
+**Solutions:**
+- Implement deduplication using userId + timestamp
+- Use Redis or database for tracking
+- Add unique constraints to vote table
+</Accordion>
+
+<Accordion title="Test webhook works but real votes don't">
+**Causes:**
+- Different endpoint URL
+- Authorization header misconfigured
+- Webhook disabled or changed
+
+**Solutions:**
+- Verify webhook URL is correct in dashboard
+- Test with real vote from another user
+- Check server logs for webhook requests
+</Accordion>
+
+## Database Schema
+
+```sql
+CREATE TABLE votes (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(20) NOT NULL,
+  server_id VARCHAR(20) NOT NULL,
+  credits_awarded BOOLEAN DEFAULT false,
+  ad_blocker BOOLEAN DEFAULT false,
+  voted_at TIMESTAMP NOT NULL,
+  processed BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(user_id, server_id, voted_at)
+);
+
+CREATE TABLE vote_rewards (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(20) NOT NULL,
+  server_id VARCHAR(20) NOT NULL,
+  reward_type VARCHAR(50),
+  reward_value VARCHAR(255),
+  granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_votes_user ON votes(user_id);
+CREATE INDEX idx_votes_server ON votes(server_id);
+CREATE INDEX idx_votes_processed ON votes(processed);
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Getting Started" icon="rocket" href="/servers/getting-started">
+    New to Rankly? Learn the basics
+  </Card>
+  
+  <Card title="Credits System" icon="coins" href="/servers/credits">
+    Understand how to earn and spend credits
+  </Card>
+  
+  <Card title="Bot Webhooks" icon="robot" href="/bots/premium">
+    Handle bot premium webhooks
+  </Card>
+  
+  <Card title="Support Server" icon="discord" href="https://discord.gg/MtH5PhQS33">
+    Get help from the community
+  </Card>
+</CardGroup>

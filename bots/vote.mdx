@@ -1,0 +1,602 @@
+---
+title: "Vote Webhooks"
+description: "Process user votes in real-time and reward voters with platform credits"
+icon: "star"
+---
+
+Receive instant notifications when users vote for your bot. Use vote webhooks to grant rewards, track voting patterns, and build engagement features.
+
+## Overview
+
+When a user successfully votes for your bot on Rankly, an HTTP POST request is sent to your configured webhook endpoint. This enables you to:
+
+- 🏆 Grant instant rewards to voters
+- 📊 Track voting participation
+- 🎯 Build loyalty programs
+- 🎁 Handle credit awards automatically
+
+<Info>
+Vote webhooks are distinct from premium webhooks. Each uses a separate webhook secret (`RANKLY_VOTE_WEBHOOK_SECRET`).
+</Info>
+
+## Webhook Delivery
+
+### Request Format
+
+Vote webhooks are delivered as JSON POST requests:
+
+```bash
+POST https://your-endpoint.com/webhook/votes
+Content-Type: application/json
+X-Webhook-Signature: <hmac_sha256_hex>
+```
+
+### Payload Structure
+
+<CodeBlock language="json" title="Vote Event">
+```json
+{
+  "event": "bot_vote",
+  "timestamp": "2025-11-25T10:00:00.000Z",
+  "voter": {
+    "userId": "987654321098765432",
+    "username": "exampleuser"
+  },
+  "bot": {
+    "id": "1234567890123456789",
+    "name": "Your Bot Name"
+  },
+  "creditsAwarded": true,
+  "adBlocker": false,
+  "creditDenialReason": null
+}
+```
+</CodeBlock>
+
+### Field Reference
+
+<ResponseField name="event" type="string" required>
+Event identifier. Always `bot_vote` for vote webhooks.
+</ResponseField>
+
+<ResponseField name="timestamp" type="string" required>
+ISO 8601 formatted timestamp when the vote occurred.
+</ResponseField>
+
+<ResponseField name="voter" type="object" required>
+<Expandable title="Voter Object">
+<ResponseField name="userId" type="string" required>
+The Discord user ID of the voter.
+</ResponseField>
+
+<ResponseField name="username" type="string" required>
+The Discord username of the voter.
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="bot" type="object" required>
+<Expandable title="Bot Object">
+<ResponseField name="id" type="string" required>
+Your bot's Discord application ID.
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+Your bot's display name on Rankly.
+</ResponseField>
+</Expandable>
+</ResponseField>
+
+<ResponseField name="creditsAwarded" type="boolean" required>
+Whether Rankly platform credits were awarded for this vote.
+</ResponseField>
+
+<ResponseField name="adBlocker" type="boolean" required>
+`true` if an ad blocker was detected during the vote process.
+</ResponseField>
+
+<ResponseField name="creditDenialReason" type="string | null">
+Explanation if credits weren't awarded. `null` when credits were successfully awarded.
+</ResponseField>
+
+## Understanding Credit Awards
+
+The `creditsAwarded` and `adBlocker` fields help you understand the vote context:
+
+| Scenario | creditsAwarded | adBlocker | creditDenialReason |
+|----------|--------|-----------|-------------------|
+| Successful vote, no blocker | `true` | `false` | `null` |
+| Vote blocked by ad blocker | `false` | `true` | Ad blocker detected |
+| Duplicate recent vote | `false` | `false` | Already voted recently |
+
+<Tip>
+Even if `creditsAwarded` is `false`, you may want to grant your own bot rewards for user engagement and support.
+</Tip>
+
+## Signature Verification
+
+All webhooks include a cryptographic signature. Verify it before processing to prevent unauthorized requests:
+
+### Verification Steps
+
+1. Extract `X-Webhook-Signature` header
+2. Stringify the JSON payload as received
+3. Compute HMAC SHA256 with your webhook secret
+4. Compare using timing-safe comparison
+
+<Tabs>
+<Tab title="Node.js">
+```javascript
+const crypto = require('crypto');
+
+function verifyWebhookSignature(payload, signature, secret) {
+  if (!signature || !secret) {
+    return false;
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(JSON.stringify(payload))
+    .digest('hex');
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    );
+  } catch {
+    return false;
+  }
+}
+```
+</Tab>
+
+<Tab title="Python">
+```python
+import hmac
+import hashlib
+import json
+
+def verify_webhook_signature(payload, signature, secret):
+    expected_signature = hmac.new(
+        secret.encode('utf-8'),
+        json.dumps(payload, separators=(',', ':')).encode('utf-8'),
+        hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(signature, expected_signature)
+```
+</Tab>
+
+<Tab title="Go">
+```go
+package main
+
+import (
+    "crypto/hmac"
+    "crypto/sha256"
+    "crypto/subtle"
+    "encoding/hex"
+    "encoding/json"
+)
+
+func verifyWebhookSignature(payload interface{}, signature string, secret string) bool {
+    payloadBytes, err := json.Marshal(payload)
+    if err != nil {
+        return false
+    }
+
+    mac := hmac.New(sha256.New, []byte(secret))
+    mac.Write(payloadBytes)
+    expectedSignature := hex.EncodeToString(mac.Sum(nil))
+
+    return subtle.ConstantTimeCompare([]byte(signature), []byte(expectedSignature)) == 1
+}
+```
+</Tab>
+</Tabs>
+
+<Warning>
+Never process webhooks without verifying the signature. Always use timing-safe comparison functions.
+</Warning>
+
+## Complete Handler Implementation
+
+Here's a production-ready webhook handler with verification, idempotency, and reward logic:
+
+<CodeBlock language="javascript" title="Vote Webhook Handler">
+```javascript
+const crypto = require('crypto');
+const express = require('express');
+const Redis = require('redis');
+
+const app = express();
+app.use(express.json());
+
+const WEBHOOK_SECRET = process.env.RANKLY_VOTE_WEBHOOK_SECRET;
+const redisClient = Redis.createClient();
+
+function verifyWebhookSignature(payload, signature, secret) {
+  if (!signature || !secret) {
+    return false;
+  }
+
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(JSON.stringify(payload))
+    .digest('hex');
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature),
+      Buffer.from(expectedSignature)
+    );
+  } catch {
+    return false;
+  }
+}
+
+app.post('/webhook/votes', async (req, res) => {
+  const signature = req.headers['x-webhook-signature'];
+  const payload = req.body;
+
+  // Verify signature before processing
+  if (!verifyWebhookSignature(payload, signature, WEBHOOK_SECRET)) {
+    console.error('Webhook signature verification failed');
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+
+  const { voter, bot, timestamp, creditsAwarded, adBlocker } = payload;
+  const voteKey = `${voter.userId}:${timestamp}`;
+
+  try {
+    // Check for duplicates using Redis
+    const isDuplicate = await redisClient.exists(voteKey);
+    if (isDuplicate) {
+      return res.status(200).json({ received: true, duplicate: true });
+    }
+
+    // Mark as processed
+    await redisClient.setex(voteKey, 86400, '1'); // 24 hour expiry
+
+    console.log(`Vote received: ${voter.username} (${voter.userId}) voted for ${bot.name}`);
+
+    // Process the vote asynchronously
+    await processVote({
+      userId: voter.userId,
+      username: voter.username,
+      botId: bot.id,
+      botName: bot.name,
+      creditsAwarded,
+      adBlocker,
+      timestamp
+    });
+
+    return res.status(200).json({ received: true });
+  } catch (error) {
+    console.error('Error processing vote:', error);
+    return res.status(500).json({ error: 'Processing failed' });
+  }
+});
+
+async function processVote(data) {
+  try {
+    // Record the vote in your database
+    await database.votes.insertOne({
+      userId: data.userId,
+      username: data.username,
+      botId: data.botId,
+      botName: data.botName,
+      creditsAwarded: data.creditsAwarded,
+      adBlocker: data.adBlocker,
+      votedAt: new Date(data.timestamp)
+    });
+
+    // Grant rewards
+    if (data.creditsAwarded && !data.adBlocker) {
+      await grantVoteReward(data.userId, data.botId);
+    } else if (!data.adBlocker) {
+      // Still reward users for voting, even if Rankly didn't award credits
+      await grantVoteReward(data.userId, data.botId);
+    }
+
+    console.log(`Processed vote from ${data.username}`);
+  } catch (error) {
+    console.error('Error in processVote:', error);
+    throw error;
+  }
+}
+
+async function grantVoteReward(userId, botId) {
+  // Implement your reward logic here
+  // Examples: +100 currency, +5 XP, etc.
+  console.log(`Granted vote reward to ${userId}`);
+}
+
+app.listen(3000, () => {
+  console.log('Vote webhook server running on port 3000');
+});
+```
+</CodeBlock>
+
+## Response Requirements
+
+Your endpoint must meet these specifications for reliable delivery:
+
+| Requirement | Specification |
+|-------------|----------------|
+| **Response Time** | Return within 10 seconds |
+| **Success Status** | HTTP `200` to acknowledge receipt |
+| **Idempotency** | Handle duplicate deliveries gracefully |
+| **Retry Behavior** | Non-2xx responses trigger retries |
+
+### Recommended Response
+
+```json
+{
+  "received": true
+}
+```
+
+## Idempotency & Deduplication
+
+Implement deduplication using `voter.userId` and `timestamp` to prevent duplicate reward grants:
+
+<Tabs>
+<Tab title="Redis (Recommended)">
+```javascript
+const Redis = require('redis');
+const redisClient = Redis.createClient();
+
+app.post('/webhook/votes', async (req, res) => {
+  const { voter, timestamp } = req.body;
+  const voteKey = `vote:${voter.userId}:${timestamp}`;
+
+  // Check if already processed
+  const isDuplicate = await redisClient.exists(voteKey);
+  if (isDuplicate) {
+    return res.status(200).json({ received: true, duplicate: true });
+  }
+
+  // Mark as processed with 24-hour expiry
+  await redisClient.setex(voteKey, 86400, '1');
+
+  // Process vote...
+});
+```
+</Tab>
+
+<Tab title="Database">
+```javascript
+app.post('/webhook/votes', async (req, res) => {
+  const { voter, timestamp } = req.body;
+
+  // Check if already processed
+  const existingVote = await database.votes.findOne({
+    userId: voter.userId,
+    timestamp: new Date(timestamp)
+  });
+
+  if (existingVote) {
+    return res.status(200).json({ received: true, duplicate: true });
+  }
+
+  // Record immediately to prevent race conditions
+  await database.votes.insertOne({
+    userId: voter.userId,
+    timestamp: new Date(timestamp),
+    processed: true
+  });
+
+  // Process vote...
+});
+```
+</Tab>
+
+<Tab title="In-Memory (Dev Only)">
+```javascript
+const processedVotes = new Map();
+
+app.post('/webhook/votes', async (req, res) => {
+  const { voter, timestamp } = req.body;
+  const voteKey = `${voter.userId}:${timestamp}`;
+
+  if (processedVotes.has(voteKey)) {
+    return res.status(200).json({ received: true, duplicate: true });
+  }
+
+  processedVotes.set(voteKey, true);
+
+  // Clear after 24 hours
+  setTimeout(() => processedVotes.delete(voteKey), 86400000);
+
+  // Process vote...
+});
+```
+</Tab>
+</Tabs>
+
+<Tip>
+Use Redis or database persistence for production. In-memory storage is only suitable for local development.
+</Tip>
+
+## Reward Implementation
+
+Design your reward system based on vote behavior:
+
+```javascript
+async function grantVoteReward(userId, botId) {
+  const rewardAmount = 100; // Your bot's currency unit
+  
+  try {
+    // Award currency
+    await database.users.updateOne(
+      { discordId: userId },
+      { $inc: { balance: rewardAmount } }
+    );
+
+    // Track reward
+    await database.rewardLog.insertOne({
+      userId,
+      botId,
+      type: 'vote_reward',
+      amount: rewardAmount,
+      awardedAt: new Date()
+    });
+
+    // Optional: Notify user via DM
+    await notifyUserOfReward(userId, rewardAmount);
+  } catch (error) {
+    console.error('Error granting reward:', error);
+    throw error;
+  }
+}
+```
+
+## Database Schema
+
+### Votes Table
+
+```sql
+CREATE TABLE votes (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(20) NOT NULL,
+  username VARCHAR(100) NOT NULL,
+  bot_id VARCHAR(20) NOT NULL,
+  bot_name VARCHAR(100) NOT NULL,
+  credits_awarded BOOLEAN DEFAULT false,
+  ad_blocker BOOLEAN DEFAULT false,
+  voted_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_votes_user_id ON votes(user_id);
+CREATE INDEX idx_votes_bot_id ON votes(bot_id);
+CREATE INDEX idx_votes_voted_at ON votes(voted_at);
+CREATE UNIQUE INDEX idx_votes_dedup ON votes(user_id, voted_at);
+```
+
+### Reward Log Table
+
+```sql
+CREATE TABLE reward_log (
+  id SERIAL PRIMARY KEY,
+  user_id VARCHAR(20) NOT NULL,
+  bot_id VARCHAR(20) NOT NULL,
+  type VARCHAR(50) NOT NULL,
+  amount INTEGER NOT NULL,
+  awarded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_reward_log_user_id ON reward_log(user_id);
+CREATE INDEX idx_reward_log_awarded_at ON reward_log(awarded_at);
+```
+
+## Security Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Verify Signatures" icon="shield-check">
+    Always validate webhook signatures before processing any vote data.
+  </Card>
+  
+  <Card title="Use HTTPS" icon="lock">
+    Ensure your webhook endpoint uses TLS encryption.
+  </Card>
+  
+  <Card title="Rate Limiting" icon="zap">
+    Implement rate limiting on your webhook endpoint to prevent abuse.
+  </Card>
+  
+  <Card title="Async Processing" icon="clock">
+    Process votes asynchronously to avoid timeout errors.
+  </Card>
+  
+  <Card title="Monitor Failures" icon="alert-triangle">
+    Log and monitor signature verification failures for security issues.
+  </Card>
+  
+  <Card title="Rotate Secrets" icon="key">
+    Regenerate webhook secrets immediately if compromised.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+<Accordion title="Webhooks not received">
+**Cause:** Endpoint not publicly accessible
+
+**Solutions:**
+- Verify your server is reachable from the internet
+- Check firewall rules allow inbound HTTPS traffic
+- Confirm endpoint URL is correct in Rankly dashboard
+- Test: `curl -X POST https://your-endpoint.com/webhook/votes`
+</Accordion>
+
+<Accordion title="Signature verification fails">
+**Cause:** Wrong secret or payload modification
+
+**Solutions:**
+- Ensure you're using `RANKLY_VOTE_WEBHOOK_SECRET` (not premium)
+- Don't modify the payload before verification
+- Check for encoding issues (UTF-8)
+- Verify secret hasn't been regenerated
+</Accordion>
+
+<Accordion title="Timeout errors">
+**Cause:** Processing takes too long
+
+**Solutions:**
+- Return HTTP 200 immediately
+- Process reward grants asynchronously
+- Use background job queue (Bull, Celery, etc.)
+- Set up monitoring for long-running tasks
+</Accordion>
+
+<Accordion title="Duplicate rewards granted">
+**Cause:** Missing idempotency implementation
+
+**Solutions:**
+- Implement deduplication using `voter.userId:timestamp`
+- Use Redis for high-traffic scenarios
+- Add database constraints for uniqueness
+- Record votes before processing rewards
+</Accordion>
+
+<Accordion title="creditsAwarded is always false">
+**Cause:** Could be ad blocker, duplicate vote, or other restrictions
+
+**Solutions:**
+- Check if `adBlocker` flag is `true` in payload
+- Review `creditDenialReason` for specific cause
+- Still grant your own rewards for engagement
+- Monitor credit denial patterns for issues
+</Accordion>
+
+## Best Practices
+
+<CheckCircle title="Process Asynchronously">
+Return HTTP 200 immediately and process rewards in background jobs to avoid timeouts.
+</CheckCircle>
+
+<CheckCircle title="Use Deduplication">
+Implement idempotency to prevent rewarding users twice for the same vote.
+</CheckCircle>
+
+<CheckCircle title="Grant Rewards Generously">
+Even if Rankly doesn't award credits, consider rewarding users to encourage voting.
+</CheckCircle>
+
+<CheckCircle title="Monitor Patterns">
+Track vote patterns, reward distribution, and potential fraud.
+</CheckCircle>
+
+<CheckCircle title="Communicate with Users">
+Notify users when they receive rewards to reinforce positive behavior.
+</CheckCircle>
+
+## Next Steps
+
+- 👑 Review [Premium Purchase Webhooks](/bots/premium) for monetization
+- 📊 Set up analytics for vote tracking
+- 🎁 Design tier-based reward systems
+- 🧪 Test with sandbox votes before production

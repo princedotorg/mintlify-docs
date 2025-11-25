@@ -1,7 +1,7 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Rankly Docs",
   "colors": {
     "primary": "#16A34A",
     "light": "#07C983",
@@ -36,33 +36,37 @@
               "essentials/images",
               "essentials/reusable-snippets"
             ]
+          }
+        ]
+      },
+      {
+        "tab": "Servers",
+        "groups": [
+          {
+            "group": "Getting started",
+            "pages": [
+              "servers/getting-started"
+            ]
           },
           {
-            "group": "AI tools",
+            "group": "Monetization",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "servers/credits",
+              "servers/earning-credits",
+              "servers/spending-credits",
+              "servers/webhooks"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Bot Integration",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Webhooks",
             "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Endpoint examples",
-            "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "bots/premium",
+              "bots/vote"
             ]
           }
         ]
@@ -72,12 +76,12 @@
       "anchors": [
         {
           "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
+          "href": "https://docs.rankly.live",
           "icon": "book-open-cover"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
+          "anchor": "Dashboard",
+          "href": "https://rankly.live/dashboard",
           "icon": "newspaper"
         }
       ]
@@ -91,13 +95,13 @@
     "links": [
       {
         "label": "Support",
-        "href": "mailto:hi@mintlify.com"
+        "href": "mailto:support@rankly.live"
       }
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
+      "label": "Website",
+      "href": "https://rankly.live"
     }
   },
   "contextual": {
@@ -114,9 +118,9 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "discord": "https://discord.gg/MtH5PhQS33",
+      "github": "https://github.com/princedotorg/mintlify-docs",
+      "website": "https://rankly.live"
     }
   }
 }
