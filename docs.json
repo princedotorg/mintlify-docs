@@ -8,33 +8,43 @@
     "dark": "#15803D"
   },
   "favicon": "/favicon.svg",
+  "seo": {
+    "indexing": "all",
+    "metatags": {
+      "robots": "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+      "googlebot": "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
+      "charset": "UTF-8",
+      "viewport": "width=device-width, initial-scale=1.0",
+      "description": "Rankly - The premier Discord server listing and discovery platform. List your server, earn credits, and grow your community.",
+      "keywords": "Discord, server, ranking, promotion, credits, community, webhooks, rankly",
+      "author": "Rankly",
+      "google": "notranslate",
+      "theme-color": "#16A34A",
+      "color-scheme": "light dark",
+      "canonical": "https://docs.rankly.live",
+      "og:site_name": "Rankly Docs",
+      "og:type": "website",
+      "og:title": "Rankly Documentation - Grow Your Discord Server",
+      "og:description": "Complete guide to promoting your Discord server and integrating Rankly webhooks into your bot.",
+      "og:url": "https://docs.rankly.live",
+      "og:image": "https://rankly.live/og-image.png",
+      "apple-mobile-web-app-capable": "yes",
+      "apple-mobile-web-app-status-bar-style": "black-translucent",
+      "apple-mobile-web-app-title": "Rankly",
+      "HandheldFriendly": "True",
+      "MobileOptimized": "320"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Home",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Welcome",
             "pages": [
               "index",
-              "quickstart",
-              "development"
-            ]
-          },
-          {
-            "group": "Customization",
-            "pages": [
-              "essentials/settings",
-              "essentials/navigation"
-            ]
-          },
-          {
-            "group": "Writing content",
-            "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "quickstart"
             ]
           }
         ]
@@ -49,18 +59,23 @@
             ]
           },
           {
-            "group": "Monetization",
+            "group": "Credits & Monetization",
             "pages": [
               "servers/credits",
               "servers/earning-credits",
-              "servers/spending-credits",
+              "servers/spending-credits"
+            ]
+          },
+          {
+            "group": "Integration",
+            "pages": [
               "servers/webhooks"
             ]
           }
         ]
       },
       {
-        "tab": "Bot Integration",
+        "tab": "Bots",
         "groups": [
           {
             "group": "Webhooks",
@@ -110,10 +125,7 @@
      "view",
      "chatgpt",
      "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
+     "perplexity"
    ]
   },
   "footer": {

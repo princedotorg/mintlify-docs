@@ -1,0 +1,6 @@
+# Allow all crawlers to index all pages
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://docs.rankly.live/sitemap.xml
