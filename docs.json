@@ -55,7 +55,8 @@
           {
             "group": "Getting started",
             "pages": [
-              "servers/getting-started"
+              "servers/getting-started",
+              "servers/bumping"
             ]
           },
           {
