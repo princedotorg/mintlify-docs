@@ -1,0 +1,353 @@
+---
+title: "API Reference"
+description: "Public API endpoints for integrating Rankly with your bot or application"
+icon: "code"
+---
+
+The Rankly Public API allows server owners and developers to programmatically access server data, check vote status, and retrieve reviews.
+
+## Base Configuration
+
+<CodeBlock language="bash">
+```bash
+Base URL: https://api.rankly.live/api/v1
+```
+</CodeBlock>
+
+## Authentication
+
+All API requests require authentication using an API Key. Generate your API Key in your server dashboard:
+
+**Dashboard Path:** Edit Server → Advanced Setup → API Key
+
+<Tabs>
+  <Tab title="Header">
+    ```http
+    X-API-Key: rk_live_...
+    ```
+  </Tab>
+  <Tab title="Query Parameter">
+    ```
+    ?key=rk_live_...
+    ```
+  </Tab>
+</Tabs>
+
+<Info>
+Keep your API Key secure and never share it publicly. Treat it like a password to your server data.
+</Info>
+
+## Rate Limiting
+
+The Public API enforces rate limits to ensure fair usage:
+
+| Limit | Value |
+|-------|-------|
+| Requests per minute | 120 |
+| Per | API Key |
+| Exceeded response | `429 Too Many Requests` |
+
+<Note>
+Rate limit headers are planned for a future update. Currently, responses don't include rate limit information.
+</Note>
+
+## Endpoints
+
+### Get Server Details
+
+Retrieve public information about your server.
+
+<ParamField path="GET" default="/server">
+  Fetch server details
+</ParamField>
+
+**Authentication:** Required
+
+<Response>
+```json
+{
+  "success": true,
+  "data": {
+    "id": "123456789012345678",
+    "name": "My Awesome Server",
+    "description": "A thriving community...",
+    "memberCount": 5000,
+    "icon": "https://...",
+    "url": "https://rankly.io/server/123456789012345678"
+  }
+}
+```
+</Response>
+
+### Get Bot Details
+
+Retrieve public information about your bot.
+
+<ParamField path="GET" default="/bot">
+  Fetch bot details
+</ParamField>
+
+**Authentication:** Required
+
+<Response>
+```json
+{
+  "success": true,
+  "data": {
+    "id": "987654321098765432",
+    "name": "My Cool Bot",
+    "description": "Multi-purpose bot...",
+    "votes": 500,
+    "avatar": "https://...",
+    "url": "https://rankly.io/bot/987654321098765432"
+  }
+}
+```
+</Response>
+
+### Check User Vote Status
+
+Verify if a user can vote or is on cooldown.
+
+<ParamField path="GET" default="/votes/{userId}">
+  Check vote eligibility
+</ParamField>
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `userId` | string | Discord User ID to check |
+
+**Authentication:** Required
+
+<ResponseExample>
+
+```json title="Can Vote"
+{
+  "success": true,
+  "data": {
+    "canVote": true
+  }
+}
+```
+
+```json title="On Cooldown"
+{
+  "success": true,
+  "data": {
+    "canVote": false,
+    "nextVoteDate": "2023-10-26T10:00:00.000Z",
+    "lastVoteDate": "2023-10-25T22:00:00.000Z",
+    "secondsUntilVote": 3600
+  }
+}
+```
+
+</ResponseExample>
+
+### Get Server Reviews
+
+Retrieve the latest reviews for your server with flexible filtering.
+
+<ParamField path="GET" default="/reviews">
+  Fetch server reviews
+</ParamField>
+
+**Query Parameters:**
+
+| Parameter | Type | Default | Max | Description |
+|-----------|------|---------|-----|-------------|
+| `limit` | integer | 10 | 50 | Number of reviews to return |
+| `sort` | string | `newest` | - | Sort order: `newest`, `highest`, `lowest` |
+
+**Authentication:** Required
+
+<Response>
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "username": "User123",
+      "rating": 5,
+      "comment": "Best server ever!",
+      "createdAt": "2023-10-25T12:00:00.000Z"
+    },
+    {
+      "username": "Developer456",
+      "rating": 4,
+      "comment": "Great community, responsive admins",
+      "createdAt": "2023-10-24T08:30:00.000Z"
+    }
+  ],
+  "meta": {
+    "total": 156,
+    "shown": 2
+  }
+}
+```
+</Response>
+
+## Error Handling
+
+All API errors follow a consistent JSON structure:
+
+<CodeBlock language="json" title="Error Response Format">
+```json
+{
+  "success": false,
+  "error": "Error message description"
+}
+```
+</CodeBlock>
+
+**Common Error Codes:**
+
+| Status | Error | Description |
+|--------|-------|-------------|
+| 401 | `Unauthorized` | Invalid or missing API Key |
+| 404 | `Not Found` | Server or resource not found |
+| 429 | `Too Many Requests` | Rate limit exceeded |
+
+## Code Examples
+
+<Tabs>
+  <Tab title="cURL">
+    ```bash
+    # Get server details
+    curl -X GET "https://api.rankly.live/api/v1/server" \
+      -H "X-API-Key: rk_live_..." \
+      -H "Content-Type: application/json"
+    
+    # Check user vote status
+    curl -X GET "https://api.rankly.live/api/v1/votes/123456789" \
+      -H "X-API-Key: rk_live_..."
+    
+    # Get reviews (sorted by highest rating)
+    curl -X GET "https://api.rankly.live/api/v1/reviews?limit=25&sort=highest" \
+      -H "X-API-Key: rk_live_..."
+    ```
+  </Tab>
+  
+  <Tab title="JavaScript">
+    ```javascript
+    const API_KEY = "rk_live_...";
+    const BASE_URL = "https://api.rankly.live/api/v1";
+    
+    // Get server details
+    async function getServerDetails() {
+      const response = await fetch(`${BASE_URL}/server`, {
+        headers: { "X-API-Key": API_KEY }
+      });
+      return response.json();
+    }
+    
+    // Check vote status
+    async function checkVoteStatus(userId) {
+      const response = await fetch(`${BASE_URL}/votes/${userId}`, {
+        headers: { "X-API-Key": API_KEY }
+      });
+      return response.json();
+    }
+    
+    // Get reviews
+    async function getReviews(limit = 10, sort = "newest") {
+      const params = new URLSearchParams({ limit, sort });
+      const response = await fetch(`${BASE_URL}/reviews?${params}`, {
+        headers: { "X-API-Key": API_KEY }
+      });
+      return response.json();
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Python">
+    ```python
+    import requests
+    
+    API_KEY = "rk_live_..."
+    BASE_URL = "https://api.rankly.live/api/v1"
+    
+    headers = {"X-API-Key": API_KEY}
+    
+    # Get server details
+    def get_server_details():
+        response = requests.get(f"{BASE_URL}/server", headers=headers)
+        return response.json()
+    
+    # Check vote status
+    def check_vote_status(user_id):
+        response = requests.get(f"{BASE_URL}/votes/{user_id}", headers=headers)
+        return response.json()
+    
+    # Get reviews
+    def get_reviews(limit=10, sort="newest"):
+        params = {"limit": limit, "sort": sort}
+        response = requests.get(f"{BASE_URL}/reviews", headers=headers, params=params)
+        return response.json()
+    ```
+  </Tab>
+
+  <Tab title="Go">
+    ```go
+    package main
+
+    import (
+      "fmt"
+      "net/http"
+      "io/ioutil"
+    )
+
+    const (
+      APIKey   = "rk_live_..."
+      BaseURL  = "https://api.rankly.live/api/v1"
+    )
+
+    func getServerDetails() {
+      req, _ := http.NewRequest("GET", BaseURL+"/server", nil)
+      req.Header.Add("X-API-Key", APIKey)
+      
+      client := &http.Client{}
+      resp, _ := client.Do(req)
+      body, _ := ioutil.ReadAll(resp.Body)
+      
+      fmt.Println(string(body))
+    }
+    ```
+  </Tab>
+</Tabs>
+
+## Best Practices
+
+<Accordion title="Security">
+- Store API keys in environment variables, never hardcode them
+- Use HTTPS for all requests (never HTTP)
+- Rotate keys regularly if they may be compromised
+- Use different keys for different applications
+</Accordion>
+
+<Accordion title="Performance">
+- Cache responses when appropriate to avoid unnecessary requests
+- Implement exponential backoff for rate limit handling
+- Batch requests when possible
+- Monitor your API usage to stay within rate limits
+</Accordion>
+
+<Accordion title="Error Handling">
+- Implement retry logic with exponential backoff for failed requests
+- Handle rate limit responses (429) gracefully
+- Log API errors for debugging purposes
+- Provide meaningful error messages to users
+</Accordion>
+
+## What's Next
+
+<CardGroup cols={2}>
+  <Card title="Webhooks" icon="webhook" href="/servers/webhooks">
+    Receive real-time events when users vote or purchase premium
+  </Card>
+  <Card title="Earning Credits" icon="coins" href="/servers/earning-credits">
+    Learn how to maximize credits from your server
+  </Card>
+</CardGroup>

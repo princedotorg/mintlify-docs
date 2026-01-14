@@ -509,7 +509,14 @@ CREATE INDEX idx_server_premium_expires_at ON server_premium(expires_at);
 
 ## Next Steps
 
-- 📖 Review [Vote Webhooks](/bots/vote) for user engagement tracking
-- 🔧 Set up webhook secret rotation in your infrastructure
-- 📊 Implement monitoring for failed activations
-- 🧪 Test with sandbox tier purchases before going live
+<CardGroup cols={2}>
+  <Card title="Vote Webhooks" icon="star" href="/bots/vote">
+    Handle user votes and grant rewards in real-time
+  </Card>
+  <Card title="API Integration" icon="code" href="/bots/api-integration">
+    Use the REST API in your bot commands
+  </Card>
+  <Card title="Server Webhooks" icon="webhook" href="/servers/webhooks">
+    Set up server-side webhook integration
+  </Card>
+</CardGroup>

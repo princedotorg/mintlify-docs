@@ -1,0 +1,324 @@
+---
+title: "Documentation Map"
+description: "Visual guide to navigating Rankly's complete documentation"
+icon: "sitemap"
+---
+
+A complete map of all documentation resources organized by user type and use case.
+
+## Documentation Structure
+
+```
+📚 Rankly Documentation
+│
+├─ 🏠 Home
+│  ├─ index.mdx - Start here!
+│  ├─ quickstart.mdx - Basic introduction
+│  └─ quickstart-api.mdx  - API & Webhook Quick Start
+│
+├─ 🖥️ Servers
+│  ├─ Getting Started
+│  │  ├─ getting-started.mdx - Overview and benefits
+│  │  └─ bumping.mdx - Boost server visibility
+│  │
+│  ├─ Credits & Monetization
+│  │  ├─ credits.mdx - Understanding the credit system
+│  │  ├─ earning-credits.mdx - How to earn credits
+│  │  └─ spending-credits.mdx - What to buy with credits
+│  │
+│  └─ Integration
+│     ├─ webhooks.mdx - Real-time vote notifications
+│     └─ api-reference.mdx ⭐ NEW - Complete API Documentation
+│
+└─ 🤖 Bots
+   ├─ API Integration ⭐ NEW
+   │  └─ api-integration.mdx ⭐ NEW - Integrate Rankly into your bot
+   │
+   └─ Webhooks
+      ├─ vote.mdx - Process user votes in real-time
+      └─ premium.mdx - Handle premium purchases
+```
+
+## Navigation by User Type
+
+### 👨‍💼 I'm a Server Owner
+
+You want to grow your Discord server on Rankly.
+
+<CardGroup cols={2}>
+  <Card title="Getting Started" icon="rocket" href="/servers/getting-started">
+    New to Rankly? Start here to list your server
+  </Card>
+  
+  <Card title="Earning Credits" icon="coins" href="/servers/earning-credits">
+    Learn how to earn credits through votes and engagement
+  </Card>
+  
+  <Card title="Spending Credits" icon="shopping-cart" href="/servers/spending-credits">
+    Discover what you can buy with your credits
+  </Card>
+  
+  <Card title="Vote Webhooks" icon="webhook" href="/servers/webhooks">
+    Set up real-time notifications when users vote
+  </Card>
+</CardGroup>
+
+### 🤖 I'm a Bot Developer
+
+You want to integrate Rankly features into your Discord bot.
+
+<CardGroup cols={2}>
+  <Card title="API Quick Start" icon="zap" href="/quickstart-api">
+    5-minute setup guide with code examples
+  </Card>
+  
+  <Card title="Bot API Integration" icon="code" href="/bots/api-integration">
+    Use the REST API in your bot commands
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/servers/api-reference">
+    Complete endpoint documentation
+  </Card>
+  
+  <Card title="Vote Webhooks" icon="star" href="/bots/vote">
+    Receive instant vote notifications
+  </Card>
+</CardGroup>
+
+### 💳 I'm Building a Premium Feature
+
+You need to handle payments and subscriptions.
+
+<CardGroup cols={2}>
+  <Card title="Premium Webhooks" icon="crown" href="/bots/premium">
+    Process premium purchases in real-time
+  </Card>
+  
+  <Card title="API Quick Start" icon="zap" href="/quickstart-api">
+    Understand webhooks vs API
+  </Card>
+  
+  <Card title="Vote Webhooks" icon="star" href="/bots/vote">
+    Track user engagement with votes
+  </Card>
+</CardGroup>
+
+## Learning Paths
+
+### Path 1: "I want to list my server" ⏱️ 10 minutes
+
+1. [Getting Started](/servers/getting-started) - Understand what Rankly is
+2. [Earning Credits](/servers/earning-credits) - See how to get rewards
+3. [Spending Credits](/servers/spending-credits) - Discover features to unlock
+4. Done! Your server is listed
+
+### Path 2: "I want to add bot commands" ⏱️ 20 minutes
+
+1. [API Quick Start](/quickstart-api) - Choose your integration type
+2. [Bot API Integration](/bots/api-integration) - Learn the patterns
+3. [API Reference](/servers/api-reference) - Copy the endpoints you need
+4. Deploy! Your bot now has Rankly integration
+
+### Path 3: "I want real-time vote rewards" ⏱️ 30 minutes
+
+1. [API Quick Start](/quickstart-api) - Understand API vs Webhooks
+2. [Vote Webhooks](/bots/vote) - Learn webhook implementation
+3. Set up webhook endpoint (5 minutes)
+4. Test and deploy!
+
+### Path 4: "I want to build a complete integration" ⏱️ 2 hours
+
+1. [API Quick Start](/quickstart-api) - Understand all options
+2. [Bot API Integration](/bots/api-integration) - Build bot commands
+3. [Vote Webhooks](/bots/vote) - Add real-time vote processing
+4. [Premium Webhooks](/bots/premium) - Add monetization
+5. [API Reference](/servers/api-reference) - Reference docs while building
+6. Deploy your complete solution!
+
+## Documentation by Topic
+
+### 📡 API & Integration
+
+| What I Need | Where to Go | Time |
+|-------------|------------|------|
+| Quick overview | [API Quick Start](/quickstart-api) | 5 min |
+| Bot code examples | [Bot API Integration](/bots/api-integration) | 15 min |
+| All endpoints | [API Reference](/servers/api-reference) | 10 min |
+| Environment setup | [Quick Start](/quickstart-api#secrets--configuration) | 5 min |
+
+### 🪝 Webhooks
+
+| What I Need | Where to Go | Time |
+|-------------|------------|------|
+| Vote handling | [Vote Webhooks](/bots/vote) | 15 min |
+| Premium handling | [Premium Webhooks](/bots/premium) | 15 min |
+| Server setup | [Server Webhooks](/servers/webhooks) | 10 min |
+| Signature verification | [Vote Webhooks - Signature Verification](/bots/vote#signature-verification) | 5 min |
+
+### 💰 Credits & Monetization
+
+| What I Need | Where to Go | Time |
+|-------------|------------|------|
+| Understand credits | [Credits System](/servers/credits) | 5 min |
+| Earn credits | [Earning Credits](/servers/earning-credits) | 10 min |
+| Spend credits | [Spending Credits](/servers/spending-credits) | 10 min |
+| Add premium | [Premium Webhooks](/bots/premium) | 20 min |
+
+### 🛠️ Code Examples
+
+We provide code examples in multiple languages throughout the docs:
+
+- **JavaScript/Node.js** - Discord.js, Express, Axios
+- **Python** - Discord.py, Requests
+- **Go** - Native implementation
+- **cURL** - Quick API testing
+
+Look for code tabs in sections marked with `<Tabs>`.
+
+## Quick Reference
+
+### Endpoints at a Glance
+
+```
+GET  /server              Get server info
+GET  /bot                 Get bot info
+GET  /votes/{id}          Check user vote status
+GET  /reviews             Get server reviews
+```
+
+**Base URL:** `https://api.rankly.live/api/v1`
+
+**Auth:** Header or query param: `X-API-Key: rk_live_...`
+
+### Webhook Events
+
+```
+bot_vote           User voted for bot
+premium_purchase   Premium tier purchased
+```
+
+### Rate Limit
+
+```
+120 requests/minute per API key
+```
+
+## How Sections Are Organized
+
+Each documentation page follows a consistent structure:
+
+1. **Overview** - What you'll learn
+2. **Quick Start** - Get started in 5 minutes
+3. **Core Content** - Deep dive into the topic
+4. **Code Examples** - Practical implementations
+5. **Advanced Topics** - Optimization and patterns
+6. **Troubleshooting** - Common issues and solutions
+7. **Next Steps** - Related documentation
+8. **CardGroups** - Links to related pages
+
+## Using the Docs Effectively
+
+### Finding Information
+
+- **Search bar** (top right) - Quick text search
+- **Left sidebar** - Browse all pages
+- **Table of contents** - Jump to sections on current page
+- **Cross-reference links** - Navigate between related topics
+
+### Code Examples
+
+Each code example has:
+- Language selector (tabs)
+- Copy button (top right of code block)
+- Clear variable names you can customize
+- Comments explaining what's happening
+
+### Collapsible Sections
+
+Look for **Accordions** to expand detailed information without cluttering the page.
+
+## Getting Help
+
+### Documentation Gaps?
+
+Check these resources:
+
+1. **Troubleshooting sections** - Every major page has one
+2. **FAQ in Quick Start** - Common questions answered
+3. **Community Discord** - Ask other developers
+4. **Support Email** - support@rankly.live
+
+### Common Questions
+
+**Q: Do I need to use the API or webhooks?**
+A: See [API vs Webhooks](/quickstart-api#api-vs-webhooks) comparison
+
+**Q: How do I authenticate?**
+A: See [Authentication](/servers/api-reference#authentication)
+
+**Q: How do I handle duplicates?**
+A: See [Idempotency](/bots/vote#idempotency--deduplication)
+
+**Q: What's the difference between vote and premium webhooks?**
+A: [Vote Webhooks](/bots/vote) are for votes, [Premium Webhooks](/bots/premium) are for purchases
+
+**Q: Can I test webhooks locally?**
+A: Yes! Use [ngrok](/quickstart-api#local-testing-with-ngrok)
+
+## Documentation Stats
+
+📊 **Coverage:**
+- ✅ 3 API endpoints fully documented
+- ✅ 2 webhook event types with examples
+- ✅ 4 programming languages represented
+- ✅ 50+ code examples
+- ✅ 10+ component types used
+- ✅ 100+ cross-references
+
+🎯 **For Everyone:**
+- 📱 Mobile-friendly responsive design
+- 🌙 Dark mode support
+- ⚡ Fast loading
+- 🔍 Searchable
+- 🔗 Deep linking to sections
+
+## Pro Tips
+
+💡 **Bookmark these:**
+- [API Quick Start](/quickstart-api) - Your getting started guide
+- [API Reference](/servers/api-reference) - Your reference manual
+- [Bot Integration](/bots/api-integration) - Your code examples
+
+💡 **When building:**
+1. Open API Quick Start in one tab
+2. Open relevant detailed guide in another
+3. Use code examples as templates
+4. Reference API docs as needed
+
+💡 **When debugging:**
+1. Check the Troubleshooting section of the relevant page
+2. Search for your error message
+3. Join the community Discord
+4. Check environment variables are set
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Start Your Journey" icon="rocket" href="/quickstart-api">
+    Begin with API Quick Start
+  </Card>
+  
+  <Card title="Get Full API Details" icon="book" href="/servers/api-reference">
+    Complete API documentation
+  </Card>
+  
+  <Card title="Build with Code" icon="code" href="/bots/api-integration">
+    Practical examples for bots
+  </Card>
+  
+  <Card title="Need Help?" icon="discord" href="https://discord.gg/MtH5PhQS33">
+    Join our community
+  </Card>
+</CardGroup>
+
+Happy coding! 🚀
