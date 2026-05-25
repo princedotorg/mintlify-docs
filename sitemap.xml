@@ -11,7 +11,7 @@
   </url>
   <url>
     <loc>https://docs.rankly.live/quickstart</loc>
-    <lastmod>2025-11-26</lastmod>
+    <lastmod>2026-05-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
     <mobile:mobile/>
@@ -20,7 +20,7 @@
   <!-- Servers - Getting Started -->
   <url>
     <loc>https://docs.rankly.live/servers/getting-started</loc>
-    <lastmod>2025-11-26</lastmod>
+    <lastmod>2026-05-24</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
     <mobile:mobile/>
@@ -29,48 +29,69 @@
   <!-- Servers - Credits & Monetization -->
   <url>
     <loc>https://docs.rankly.live/servers/credits</loc>
-    <lastmod>2025-11-26</lastmod>
+    <lastmod>2026-05-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <mobile:mobile/>
   </url>
-  <url>
-    <loc>https://docs.rankly.live/servers/earning-credits</loc>
-    <lastmod>2025-11-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <mobile:mobile/>
-  </url>
-  <url>
-    <loc>https://docs.rankly.live/servers/spending-credits</loc>
-    <lastmod>2025-11-26</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.8</priority>
-    <mobile:mobile/>
-  </url>
-
-  <!-- Servers - Integration -->
   <url>
     <loc>https://docs.rankly.live/servers/webhooks</loc>
-    <lastmod>2025-11-26</lastmod>
+    <lastmod>2026-05-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <mobile:mobile/>
+  </url>
+  <url>
+    <loc>https://docs.rankly.live/servers/premium-webhooks</loc>
+    <lastmod>2026-05-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <mobile:mobile/>
   </url>
 
-  <!-- Bots - Webhooks -->
+  <!-- Bots -->
+  <url>
+    <loc>https://docs.rankly.live/bots/api-integration</loc>
+    <lastmod>2026-05-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <mobile:mobile/>
+  </url>
   <url>
     <loc>https://docs.rankly.live/bots/premium</loc>
-    <lastmod>2025-11-26</lastmod>
+    <lastmod>2026-05-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
     <mobile:mobile/>
   </url>
   <url>
     <loc>https://docs.rankly.live/bots/vote</loc>
-    <lastmod>2025-11-26</lastmod>
+    <lastmod>2026-05-24</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
+    <mobile:mobile/>
+  </url>
+
+  <!-- Reference -->
+  <url>
+    <loc>https://docs.rankly.live/servers/api-reference</loc>
+    <lastmod>2026-05-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <mobile:mobile/>
+  </url>
+  <url>
+    <loc>https://docs.rankly.live/troubleshooting</loc>
+    <lastmod>2026-05-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <mobile:mobile/>
+  </url>
+  <url>
+    <loc>https://docs.rankly.live/glossary</loc>
+    <lastmod>2026-05-24</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
     <mobile:mobile/>
   </url>
 </urlset>

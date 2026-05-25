@@ -1,0 +1,225 @@
+---
+title: "Premium Webhooks"
+description: "Handle server-owner monetization webhook events for purchases, renewals, expirations, and revocations."
+---
+
+Use this page for server-owner monetization webhook handling.
+
+## What this webhook is for
+
+This webhook is sent for the server premium lifecycle.
+
+## Event delivered
+
+| Event | Meaning |
+| --- | --- |
+| `premium_purchase` | A server premium purchase was successfully created. |
+| `subscription.renewed` | A recurring server premium order renewed successfully. |
+| `subscription.expired` | A recurring server premium order expired and should be deactivated. |
+| `subscription.revoked` | A server premium order was revoked (for example after chargeback/dispute). |
+
+## Headers
+
+- `X-Webhook-Signature`: HMAC SHA-256 signature of the exact JSON body
+- `Content-Type`: `application/json`
+
+## Payload example
+
+```json
+{
+  "event": "premium_purchase",
+  "purchaseId": "682f4d8e8c4a93b75ad69f90",
+  "orderId": "682f4d8e8c4a93b75ad69f90",
+  "timestamp": "2026-05-24T12:00:00.000Z",
+  "buyer": {
+    "userId": "123456789012345678",
+    "username": "Skyline"
+  },
+  "recipient": null,
+  "isGift": false,
+  "giftedBy": null,
+  "tier": {
+    "id": "server-pro-monthly",
+    "name": "Server Pro Monthly",
+    "duration": "monthly",
+    "planType": "server"
+  },
+  "serverId": "987654321098765432",
+  "targetType": "server",
+  "targetName": "Rankly Community"
+}
+```
+
+## Lifecycle payload examples
+
+### `subscription.renewed`
+
+```json
+{
+  "event": "subscription.renewed",
+  "orderId": "682f4d8e8c4a93b75ad69f90",
+  "purchaseId": "682f4d8e8c4a93b75ad69f90",
+  "timestamp": "2026-05-24T13:00:00.000Z",
+  "buyer": {
+    "userId": "123456789012345678",
+    "username": "Skyline"
+  },
+  "recipient": null,
+  "isGift": false,
+  "vendor": {
+    "type": "server",
+    "id": "987654321098765432"
+  },
+  "tier": {
+    "id": "server-pro-monthly",
+    "name": "Server Pro Monthly",
+    "duration": "monthly",
+    "planType": "server"
+  },
+  "autoRenew": true,
+  "status": "active",
+  "currentPeriodEnd": "2026-06-24T13:00:00.000Z"
+}
+```
+
+### `subscription.expired`
+
+```json
+{
+  "event": "subscription.expired",
+  "orderId": "682f4d8e8c4a93b75ad69f90",
+  "purchaseId": "682f4d8e8c4a93b75ad69f90",
+  "timestamp": "2026-05-24T14:00:00.000Z",
+  "buyer": {
+    "userId": "123456789012345678",
+    "username": "Skyline"
+  },
+  "recipient": null,
+  "isGift": false,
+  "vendor": {
+    "type": "server",
+    "id": "987654321098765432"
+  },
+  "tier": {
+    "id": "server-pro-monthly",
+    "name": "Server Pro Monthly",
+    "duration": "monthly",
+    "planType": "server"
+  },
+  "autoRenew": true,
+  "status": "expired",
+  "currentPeriodEnd": "2026-05-24T14:00:00.000Z",
+  "reason": "past_due"
+}
+```
+
+### `subscription.revoked`
+
+```json
+{
+  "event": "subscription.revoked",
+  "orderId": "682f4d8e8c4a93b75ad69f90",
+  "purchaseId": "682f4d8e8c4a93b75ad69f90",
+  "timestamp": "2026-05-24T15:00:00.000Z",
+  "buyer": {
+    "userId": "123456789012345678",
+    "username": "Skyline"
+  },
+  "recipient": null,
+  "isGift": false,
+  "vendor": {
+    "type": "server",
+    "id": "987654321098765432"
+  },
+  "tier": {
+    "id": "server-pro-monthly",
+    "name": "Server Pro Monthly",
+    "duration": "monthly",
+    "planType": "server"
+  },
+  "autoRenew": true,
+  "status": "revoked",
+  "currentPeriodEnd": "2026-06-24T13:00:00.000Z",
+  "reason": "chargeback_dispute"
+}
+```
+
+## Signature verification
+
+```javascript
+import crypto from 'crypto';
+
+function verifyRanklySignature(rawBody, signatureHeader, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(rawBody)
+    .digest('hex');
+
+  return crypto.timingSafeEqual(
+    Buffer.from(expected, 'utf8'),
+    Buffer.from(signatureHeader || '', 'utf8')
+  );
+}
+```
+
+Use the raw body exactly as received before JSON parsing transformations.
+
+## Example receiver
+
+```javascript
+import express from 'express';
+import crypto from 'crypto';
+
+const app = express();
+app.use(express.json({
+  verify: (req, _res, buf) => {
+    req.rawBody = buf.toString('utf8');
+  }
+}));
+
+app.post('/rankly/server-premium', async (req, res) => {
+  const signature = req.header('X-Webhook-Signature') || '';
+
+  const expected = crypto
+    .createHmac('sha256', process.env.RANKLY_SERVER_WEBHOOK_SECRET)
+    .update(req.rawBody)
+    .digest('hex');
+
+  if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+    return res.status(401).json({ error: 'invalid signature' });
+  }
+
+  if (req.body.event === 'premium_purchase') {
+    const { orderId, purchaseId, tier, buyer, recipient, isGift } = req.body;
+
+    // Upsert entitlement, invoice, or analytics event here.
+    console.log({ orderId, purchaseId, tier, buyer, recipient, isGift });
+  } else if (req.body.event === 'subscription.renewed') {
+    // Extend active period and keep premium enabled.
+  } else if (req.body.event === 'subscription.expired' || req.body.event === 'subscription.revoked') {
+    // Remove premium entitlement immediately.
+  }
+
+  return res.status(200).json({ received: true });
+});
+```
+
+## Production handling checklist
+
+- Verify `X-Webhook-Signature` before processing any event.
+- Deduplicate by `orderId` plus `event`.
+- Keep handler idempotent so retries do not double-apply entitlements.
+- Persist `purchaseId` and `orderId` for reconciliation.
+- Treat `subscription.revoked` as highest-priority entitlement removal.
+- Return 2xx quickly and move heavy work to async jobs.
+
+## Related docs
+
+<CardGroup cols={2}>
+  <Card title="Vote Webhooks" href="/servers/webhooks">
+    Separate webhook flow for verified vote events.
+  </Card>
+  <Card title="Troubleshooting" href="/troubleshooting">
+    Debug signature mismatches and duplicate deliveries.
+  </Card>
+</CardGroup>

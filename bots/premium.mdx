@@ -1,522 +1,238 @@
 ---
-title: "Premium Purchase Webhooks"
-description: "Integrate premium purchase webhooks to activate premium features in real-time"
-icon: "crown"
+title: "Premium Plans"
+description: "How Rankly premium purchases, plan types, and billing state work."
 ---
 
-Receive real-time notifications when users purchase premium tiers for your bot. Rankly sends webhook events that enable you to activate premium features immediately without polling.
+Premium is the part of Rankly that lets users pay for bot or server upgrades with the platform's credit system.
 
-## Overview
+## What premium covers
 
-When a user purchases a premium tier, Rankly delivers an HTTP POST request to your configured webhook endpoint. This allows your bot to:
+- Bot premium tiers
+- Server premium tiers
+- Weekly, monthly, and lifetime durations
+- Gifted purchases
+- Order history and transaction tracking
+- Premium lifecycle webhooks for purchases, renewals, expirations, and revocations
 
-- ✨ Activate premium features instantly
-- 🔄 Process transactions in real-time
-- 📊 Track premium user base accurately
-- 🎯 Handle both user and server-level premium
+## How a purchase works
 
-<Info>
-Premium webhooks are separate from vote webhooks. Ensure you're using the correct webhook secret (`RANKLY_PREMIUM_WEBHOOK_SECRET`).
-</Info>
+<Steps>
+  <Step title="Choose a target">
+    Premium can be attached to a bot or a server, depending on what the product offers.
+  </Step>
+  <Step title="Choose a tier">
+    Tiers define the price, duration, and plan type that will be charged.
+  </Step>
+  <Step title="Confirm the credit balance">
+    Rankly checks the purchaser's available credits before the order is created.
+  </Step>
+  <Step title="Store the resulting state">
+    Keep your own internal record of the plan, the expiry, and whether the purchase was gifted.
+  </Step>
+</Steps>
 
-## Webhook Delivery
+## Premium webhooks
 
-### Request Format
+For bot premium plans, Rankly sends signed webhook events to your configured premium webhook URL.
 
-All premium purchase webhooks are delivered as POST requests with JSON payloads:
+### Headers
 
-```bash
-POST https://your-endpoint.com/webhook/premium
-Content-Type: application/json
-X-Webhook-Signature: <hmac_sha256_hex>
+- `X-Webhook-Signature`: HMAC SHA-256 signature of the exact JSON body
+- `Content-Type`: `application/json`
+
+### Signature verification (Node.js)
+
+```javascript
+import crypto from 'crypto';
+
+function verifyRanklySignature(rawBody, signatureHeader, secret) {
+  const expected = crypto
+    .createHmac('sha256', secret)
+    .update(rawBody)
+    .digest('hex');
+
+  return crypto.timingSafeEqual(
+    Buffer.from(expected, 'utf8'),
+    Buffer.from(signatureHeader || '', 'utf8')
+  );
+}
 ```
 
-### Payload Structure
+Use the raw request body for verification before parsing or mutating payload fields.
 
-<CodeBlock language="json" title="Premium Purchase Event">
+## Plan types
+
+| Plan type | Meaning |
+| --- | --- |
+| Weekly | Renew or expire on a 7-day cycle. |
+| Monthly | Renew or expire on a 30-day cycle. |
+| Lifetime | Stays active until it is manually revoked. |
+
+## Event types you can receive
+
+| Event | Meaning | Common reason |
+| --- | --- | --- |
+| `premium_purchase` | A premium order was created successfully. | New checkout completed |
+| `subscription.renewed` | A recurring plan was renewed. | Auto-renew succeeded |
+| `subscription.expired` | A recurring plan was ended. | Past due, invalid buyer, tier unavailable |
+| `subscription.revoked` | A plan was revoked and should be disabled immediately. | Chargeback/dispute |
+
+## Webhook payload examples
+
+### `premium_purchase`
+
 ```json
 {
   "event": "premium_purchase",
-  "purchaseId": "1732525200000-987654321098765432",
-  "timestamp": "2025-11-25T10:00:00.000Z",
+  "purchaseId": "682f4d8e8c4a93b75ad69f90",
+  "orderId": "682f4d8e8c4a93b75ad69f90",
+  "timestamp": "2026-05-24T12:00:00.000Z",
   "buyer": {
-    "userId": "987654321098765432",
-    "username": "exampleuser"
+    "userId": "123456789012345678",
+    "username": "Skyline"
   },
+  "recipient": null,
+  "isGift": false,
+  "giftedBy": null,
   "tier": {
     "id": "pro-monthly",
-    "name": "Pro Plan",
+    "name": "Pro Monthly",
     "duration": "monthly",
     "planType": "user"
   },
   "serverId": null
 }
 ```
-</CodeBlock>
 
-### Field Reference
-
-<ResponseField name="event" type="string" required>
-Event identifier. Always `premium_purchase` for premium webhooks.
-</ResponseField>
-
-<ResponseField name="purchaseId" type="string" required>
-Unique identifier for the transaction. Use this for deduplication and audit trails.
-</ResponseField>
-
-<ResponseField name="timestamp" type="string" required>
-ISO 8601 formatted timestamp when the purchase occurred.
-</ResponseField>
-
-<ResponseField name="buyer" type="object" required>
-<Expandable title="Buyer Object">
-<ResponseField name="userId" type="string" required>
-The Discord user ID of the purchaser.
-</ResponseField>
-
-<ResponseField name="username" type="string" required>
-The Discord username of the purchaser.
-</ResponseField>
-</Expandable>
-</ResponseField>
-
-<ResponseField name="tier" type="object" required>
-<Expandable title="Tier Object">
-<ResponseField name="id" type="string" required>
-The unique identifier of the tier (e.g., `pro-monthly`).
-</ResponseField>
-
-<ResponseField name="name" type="string" required>
-Display name of the tier (e.g., `Pro Plan`).
-</ResponseField>
-
-<ResponseField name="duration" type="enum" required>
-Subscription length: `weekly`, `monthly`, or `lifetime`.
-</ResponseField>
-
-<ResponseField name="planType" type="enum" required>
-Plan scope: `user` (personal) or `server` (guild-wide).
-</ResponseField>
-</Expandable>
-</ResponseField>
-
-<ResponseField name="serverId" type="string | null">
-Discord server ID. Only present when `planType` is `server`.
-</ResponseField>
-
-## Plan Types Explained
-
-| Type | Scope | `serverId` |
-|------|-------|-----------|
-| **user** | Applies to purchaser's account across all servers | `null` |
-| **server** | Applies to a specific Discord server | Discord Server ID |
-
-<Tip>
-User-level premium is ideal for personal features, while server-level premium works great for server management features.
-</Tip>
-
-## Signature Verification
-
-All incoming webhook requests must be verified using the `X-Webhook-Signature` header. This prevents unauthorized or spoofed requests.
-
-### Verification Steps
-
-1. Extract the `X-Webhook-Signature` header
-2. Stringify the JSON payload exactly as received
-3. Compute HMAC SHA256 using your webhook secret
-4. Use timing-safe comparison to validate
-
-<Tabs>
-<Tab title="Node.js">
-```javascript
-const crypto = require('crypto');
-
-function verifyWebhookSignature(payload, signature, secret) {
-  if (!signature || !secret) {
-    return false;
-  }
-
-  const expectedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(JSON.stringify(payload))
-    .digest('hex');
-
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    );
-  } catch {
-    return false;
-  }
-}
-```
-</Tab>
-
-<Tab title="Python">
-```python
-import hmac
-import hashlib
-import json
-
-def verify_webhook_signature(payload, signature, secret):
-    expected_signature = hmac.new(
-        secret.encode('utf-8'),
-        json.dumps(payload, separators=(',', ':')).encode('utf-8'),
-        hashlib.sha256
-    ).hexdigest()
-
-    return hmac.compare_digest(signature, expected_signature)
-```
-</Tab>
-
-<Tab title="Go">
-```go
-package main
-
-import (
-    "crypto/hmac"
-    "crypto/sha256"
-    "crypto/subtle"
-    "encoding/hex"
-    "encoding/json"
-)
-
-func verifyWebhookSignature(payload interface{}, signature string, secret string) bool {
-    payloadBytes, err := json.Marshal(payload)
-    if err != nil {
-        return false
-    }
-
-    mac := hmac.New(sha256.New, []byte(secret))
-    mac.Write(payloadBytes)
-    expectedSignature := hex.EncodeToString(mac.Sum(nil))
-
-    return subtle.ConstantTimeCompare([]byte(signature), []byte(expectedSignature)) == 1
-}
-```
-</Tab>
-</Tabs>
-
-<Warning>
-Always verify signatures before activating premium features. Never trust unverified requests.
-</Warning>
-
-## Complete Handler Implementation
-
-Here's a production-ready webhook handler with signature verification, idempotency, and proper error handling:
-
-<CodeBlock language="javascript" title="Premium Webhook Handler">
-```javascript
-const crypto = require('crypto');
-const express = require('express');
-
-const app = express();
-app.use(express.json());
-
-const WEBHOOK_SECRET = process.env.RANKLY_PREMIUM_WEBHOOK_SECRET;
-
-function verifyWebhookSignature(payload, signature, secret) {
-  if (!signature || !secret) {
-    return false;
-  }
-
-  const expectedSignature = crypto
-    .createHmac('sha256', secret)
-    .update(JSON.stringify(payload))
-    .digest('hex');
-
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    );
-  } catch {
-    return false;
-  }
-}
-
-function calculateExpiry(duration) {
-  const now = new Date();
-
-  switch (duration) {
-    case 'weekly':
-      return new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    case 'monthly':
-      const monthly = new Date(now);
-      monthly.setMonth(monthly.getMonth() + 1);
-      return monthly;
-    case 'lifetime':
-      return null;
-    default:
-      throw new Error(`Unknown duration: ${duration}`);
-  }
-}
-
-app.post('/webhook/premium', async (req, res) => {
-  const signature = req.headers['x-webhook-signature'];
-  const payload = req.body;
-
-  // Verify signature before processing
-  if (!verifyWebhookSignature(payload, signature, WEBHOOK_SECRET)) {
-    console.error('Webhook signature verification failed');
-    return res.status(401).json({ error: 'Invalid signature' });
-  }
-
-  const { purchaseId, buyer, tier, serverId } = payload;
-
-  // Check for duplicates
-  const existingPurchase = await database.purchases.findOne({ purchaseId });
-  if (existingPurchase) {
-    return res.status(200).json({ received: true, duplicate: true });
-  }
-
-  // Calculate expiry
-  const expiresAt = calculateExpiry(tier.duration);
-
-  console.log(`Premium purchase: ${tier.name} by ${buyer.username} (${buyer.userId})`);
-
-  try {
-    // Record the purchase
-    await database.purchases.insertOne({ 
-      purchaseId, 
-      processedAt: new Date() 
-    });
-
-    // Activate premium based on plan type
-    if (tier.planType === 'user') {
-      await activateUserPremium({
-        discordId: buyer.userId,
-        tierId: tier.id,
-        tierName: tier.name,
-        expiresAt,
-        purchaseId
-      });
-    } else if (tier.planType === 'server') {
-      await activateServerPremium({
-        guildId: serverId,
-        tierId: tier.id,
-        tierName: tier.name,
-        expiresAt,
-        purchaseId,
-        purchasedBy: buyer.userId
-      });
-    }
-
-    return res.status(200).json({ received: true, purchaseId });
-  } catch (error) {
-    console.error('Error processing premium purchase:', error);
-    return res.status(500).json({ error: 'Processing failed' });
-  }
-});
-
-async function activateUserPremium(data) {
-  // Insert or update in your database
-  console.log(`Activated ${data.tierName} for user ${data.discordId}`);
-}
-
-async function activateServerPremium(data) {
-  // Insert or update in your database
-  console.log(`Activated ${data.tierName} for server ${data.guildId}`);
-}
-
-app.listen(3000, () => {
-  console.log('Premium webhook server running on port 3000');
-});
-```
-</CodeBlock>
-
-## Duration Handling
-
-Calculate expiry dates correctly based on subscription type:
-
-| Duration | Calculation | Example |
-|----------|-------------|---------|
-| `weekly` | Current date + 7 days | Today + 1 week |
-| `monthly` | Current date + 1 month | Dec 25 → Jan 25 |
-| `lifetime` | Never expires | `null` |
-
-<Tip>
-For monthly subscriptions, use proper calendar month addition instead of adding 30 days to handle varying month lengths correctly.
-</Tip>
-
-## Response Requirements
-
-Your endpoint must meet these requirements for reliable webhook processing:
-
-| Requirement | Specification |
-|-------------|----------------|
-| **Response Time** | Return within 5 seconds |
-| **Success Status** | HTTP `200` to acknowledge receipt |
-| **Idempotency** | Handle duplicate deliveries gracefully |
-| **Retry Behavior** | Non-2xx responses trigger retries |
-
-### Recommended Response
+### `subscription.renewed`
 
 ```json
 {
-  "received": true,
-  "purchaseId": "1732525200000-987654321098765432"
+  "event": "subscription.renewed",
+  "orderId": "682f4d8e8c4a93b75ad69f90",
+  "purchaseId": "682f4d8e8c4a93b75ad69f90",
+  "timestamp": "2026-05-24T13:00:00.000Z",
+  "buyer": {
+    "userId": "123456789012345678",
+    "username": "Skyline"
+  },
+  "recipient": null,
+  "isGift": false,
+  "vendor": {
+    "type": "bot",
+    "id": "987654321098765432"
+  },
+  "tier": {
+    "id": "pro-monthly",
+    "name": "Pro Monthly",
+    "duration": "monthly",
+    "planType": "user"
+  },
+  "autoRenew": true,
+  "status": "active",
+  "currentPeriodEnd": "2026-06-24T13:00:00.000Z"
 }
 ```
 
-## Idempotency & Deduplication
+### `subscription.expired`
 
-Always implement idempotency to handle potential duplicate deliveries:
-
-```javascript
-app.post('/webhook/premium', async (req, res) => {
-  const { purchaseId } = req.body;
-
-  // Check if already processed
-  const existingPurchase = await database.purchases.findOne({ purchaseId });
-  if (existingPurchase) {
-    // Return success to prevent retries
-    return res.status(200).json({ received: true, duplicate: true });
-  }
-
-  // Record immediately to prevent race conditions
-  await database.purchases.insertOne({ 
-    purchaseId, 
-    processedAt: new Date() 
-  });
-
-  // Activate premium...
-  // Process asynchronously to avoid timeout
-});
+```json
+{
+  "event": "subscription.expired",
+  "orderId": "682f4d8e8c4a93b75ad69f90",
+  "purchaseId": "682f4d8e8c4a93b75ad69f90",
+  "timestamp": "2026-05-24T14:00:00.000Z",
+  "buyer": {
+    "userId": "123456789012345678",
+    "username": "Skyline"
+  },
+  "recipient": null,
+  "isGift": false,
+  "vendor": {
+    "type": "bot",
+    "id": "987654321098765432"
+  },
+  "tier": {
+    "id": "pro-monthly",
+    "name": "Pro Monthly",
+    "duration": "monthly",
+    "planType": "user"
+  },
+  "autoRenew": true,
+  "status": "past_due",
+  "currentPeriodEnd": "2026-05-24T14:00:00.000Z",
+  "reason": "past_due"
+}
 ```
 
-<Tip>
-Record the purchase ID in your database immediately after verification to prevent race conditions in high-traffic scenarios.
-</Tip>
+### `subscription.revoked`
 
-## Database Schema
-
-### User Premium
-
-```sql
-CREATE TABLE user_premium (
-  id SERIAL PRIMARY KEY,
-  discord_id VARCHAR(20) NOT NULL UNIQUE,
-  tier_id VARCHAR(50) NOT NULL,
-  tier_name VARCHAR(100) NOT NULL,
-  expires_at TIMESTAMP NULL,
-  purchase_id VARCHAR(100) NOT NULL UNIQUE,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_user_premium_discord_id ON user_premium(discord_id);
-CREATE INDEX idx_user_premium_expires_at ON user_premium(expires_at);
+```json
+{
+  "event": "subscription.revoked",
+  "orderId": "682f4d8e8c4a93b75ad69f90",
+  "purchaseId": "682f4d8e8c4a93b75ad69f90",
+  "timestamp": "2026-05-24T15:00:00.000Z",
+  "buyer": {
+    "userId": "123456789012345678",
+    "username": "Skyline"
+  },
+  "recipient": null,
+  "isGift": false,
+  "vendor": {
+    "type": "bot",
+    "id": "987654321098765432"
+  },
+  "tier": {
+    "id": "pro-monthly",
+    "name": "Pro Monthly",
+    "duration": "monthly",
+    "planType": "user"
+  },
+  "autoRenew": true,
+  "status": "revoked",
+  "currentPeriodEnd": "2026-06-24T13:00:00.000Z",
+  "reason": "chargeback_dispute"
+}
 ```
 
-### Server Premium
+## What could happen in production
 
-```sql
-CREATE TABLE server_premium (
-  id SERIAL PRIMARY KEY,
-  guild_id VARCHAR(20) NOT NULL UNIQUE,
-  tier_id VARCHAR(50) NOT NULL,
-  tier_name VARCHAR(100) NOT NULL,
-  expires_at TIMESTAMP NULL,
-  purchase_id VARCHAR(100) NOT NULL UNIQUE,
-  purchased_by VARCHAR(20) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+- A user buys premium now: you get `premium_purchase`, then grant features immediately.
+- The subscription renews a month later: you get `subscription.renewed`, and just extend access.
+- Auto-renew fails: you get `subscription.expired`, and you should remove paid features.
+- A chargeback happens after purchase: you get `subscription.revoked`, and you should disable access right away.
+- A gift purchase is made: `isGift` is true and `recipient` is populated, so entitlement should be applied to the recipient.
 
-CREATE INDEX idx_server_premium_guild_id ON server_premium(guild_id);
-CREATE INDEX idx_server_premium_expires_at ON server_premium(expires_at);
-```
+## What to expect in your app
 
-## Security Best Practices
+- A premium purchase becomes an order in Rankly's billing flow.
+- The purchaser and recipient can be different users when the plan is gifted.
+- The dashboard should always show the current status, not just the original purchase date.
+- If you need to reflect the current plan in your bot, refresh your own cached state after checkout.
+
+## Handler checklist
+
+- Verify `X-Webhook-Signature` before processing.
+- Deduplicate by `orderId` plus `event`.
+- Make state transitions idempotent.
+- Treat `subscription.revoked` as highest priority for entitlement removal.
+- Return `2xx` quickly, then do heavy work async.
+
+## Helpful implementation notes
+
+- Keep tier IDs stable once users rely on them.
+- Show the user what they are paying for before they confirm the purchase.
+- Make expired plans obvious in the UI.
+- Treat a billing failure as a recoverable state, not a fatal error.
+
+## Related docs
 
 <CardGroup cols={2}>
-  <Card title="Verify Signatures" icon="shield-check">
-    Always validate webhook signatures using timing-safe comparison before processing any data.
+  <Card title="Credits" href="/servers/credits">
+    See how premium purchases interact with balances.
   </Card>
-  
-  <Card title="Use HTTPS" icon="lock">
-    Ensure your webhook endpoint uses TLS encryption to protect sensitive data in transit.
-  </Card>
-  
-  <Card title="Rotate Secrets" icon="key">
-    Regenerate webhook secrets immediately if compromised via the Rankly dashboard.
-  </Card>
-  
-  <Card title="Audit Trails" icon="list">
-    Maintain records of all `purchaseId` values for compliance and support purposes.
-  </Card>
-  
-  <Card title="Validate Plan Types" icon="check-circle">
-    Handle both `user` and `server` plan types correctly in your activation logic.
-  </Card>
-  
-  <Card title="Async Processing" icon="clock">
-    Process premium activation asynchronously to avoid timeout errors and improve reliability.
-  </Card>
-</CardGroup>
-
-## Troubleshooting
-
-<Accordion title="Webhooks not received">
-**Cause:** Endpoint not publicly accessible
-
-**Solutions:**
-- Verify your server is reachable from the internet
-- Check firewall rules allow inbound traffic
-- Ensure correct endpoint URL in Rankly dashboard
-- Test with curl: `curl -X POST https://your-endpoint.com/webhook/premium`
-</Accordion>
-
-<Accordion title="Signature verification fails">
-**Cause:** Wrong secret or payload modification
-
-**Solutions:**
-- Confirm you're using `RANKLY_PREMIUM_WEBHOOK_SECRET` (not vote secret)
-- Don't modify the payload before verification
-- Check for encoding issues (UTF-8)
-- Regenerate secret if compromised
-</Accordion>
-
-<Accordion title="Missing serverId">
-**Cause:** Expected for server-type plans
-
-**Solutions:**
-- `serverId` is only present when `planType` is `server`
-- Handle `null` value gracefully for user plans
-- Check payload structure matches your plan type
-</Accordion>
-
-<Accordion title="Duplicate activations">
-**Cause:** Missing idempotency implementation
-
-**Solutions:**
-- Implement deduplication using `purchaseId`
-- Record purchase IDs before activation
-- Use database constraints for uniqueness
-</Accordion>
-
-<Accordion title="Timeout errors">
-**Cause:** Processing takes too long
-
-**Solutions:**
-- Return HTTP 200 immediately
-- Process premium activation asynchronously
-- Use background jobs (Bull, Celery, etc.)
-- Add monitoring and error logging
-</Accordion>
-
-## Next Steps
-
-<CardGroup cols={2}>
-  <Card title="Vote Webhooks" icon="star" href="/bots/vote">
-    Handle user votes and grant rewards in real-time
-  </Card>
-  <Card title="API Integration" icon="code" href="/bots/api-integration">
-    Use the REST API in your bot commands
-  </Card>
-  <Card title="Server Webhooks" icon="webhook" href="/servers/webhooks">
-    Set up server-side webhook integration
+  <Card title="Bot API Integration" href="/bots/api-integration">
+    Pull plan state into your bot commands or dashboard.
   </Card>
 </CardGroup>

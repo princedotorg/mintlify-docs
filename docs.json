@@ -15,8 +15,8 @@
       "googlebot": "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1",
       "charset": "UTF-8",
       "viewport": "width=device-width, initial-scale=1.0",
-      "description": "Rankly - The premier Discord server listing and discovery platform. List your server, earn credits, and grow your community.",
-      "keywords": "Discord, server, ranking, promotion, credits, community, webhooks, rankly",
+      "description": "Rankly docs for server owners, bot developers, and public API users.",
+      "keywords": "Rankly, Discord server listing, Discord bot API, vote webhooks, credits, public API",
       "author": "Rankly",
       "google": "notranslate",
       "theme-color": "#16A34A",
@@ -24,8 +24,8 @@
       "canonical": "https://docs.rankly.live",
       "og:site_name": "Rankly Docs",
       "og:type": "website",
-      "og:title": "Rankly Documentation - Grow Your Discord Server",
-      "og:description": "Complete guide to promoting your Discord server and integrating Rankly webhooks into your bot.",
+      "og:title": "Rankly Docs",
+      "og:description": "Clear guides for listing servers, integrating bots, and using the public API.",
       "og:url": "https://docs.rankly.live",
       "og:image": "https://rankly.live/og-image.png",
       "apple-mobile-web-app-capable": "yes",
@@ -38,59 +38,53 @@
   "navigation": {
     "tabs": [
       {
-        "tab": "Home",
+        "tab": "Start",
         "groups": [
           {
-            "group": "Welcome",
+            "group": "Overview",
             "pages": [
               "index",
-              "quickstart",
-              "quickstart-api"
+              "quickstart"
             ]
           }
         ]
       },
       {
-        "tab": "Servers",
+        "tab": "Server Owners",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Listing and growth",
             "pages": [
               "servers/getting-started",
-              "servers/bumping"
-            ]
-          },
-          {
-            "group": "Credits & Monetization",
-            "pages": [
               "servers/credits",
-              "servers/earning-credits",
-              "servers/spending-credits"
-            ]
-          },
-          {
-            "group": "Integration",
-            "pages": [
               "servers/webhooks",
-              "servers/api-reference"
+              "servers/premium-webhooks"
             ]
           }
         ]
       },
       {
-        "tab": "Bots",
+        "tab": "Bot Developers",
         "groups": [
           {
-            "group": "API Integration",
+            "group": "Integrations",
             "pages": [
-              "bots/api-integration"
+              "bots/api-integration",
+              "bots/vote",
+              "bots/premium"
             ]
-          },
+          }
+        ]
+      },
+      {
+        "tab": "Reference",
+        "groups": [
           {
-            "group": "Webhooks",
+            "group": "API and help",
             "pages": [
-              "bots/premium",
-              "bots/vote"
+              "servers/api-reference",
+              "troubleshooting",
+              "glossary"
             ]
           }
         ]
@@ -130,12 +124,12 @@
   },
   "contextual": {
     "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity"
-   ]
+      "copy",
+      "view",
+      "chatgpt",
+      "claude",
+      "perplexity"
+    ]
   },
   "footer": {
     "socials": {
