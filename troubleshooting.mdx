@@ -1,0 +1,38 @@
+---
+title: "Troubleshooting"
+description: "Common Rankly issues and the fastest way to fix them."
+---
+
+## Public API returns 401
+
+<Accordion title="Why am I getting 401 Unauthorized?"><p>Your API key is missing, invalid, or tied to the wrong entity. Make sure you are sending the key in <code>X-API-Key</code> and that the key belongs to the server or bot you are querying.</p></Accordion>
+
+## Public API returns 429
+
+<Accordion title="Why am I getting rate limited?"><p>The request rate is too high. Cache repeated reads, back off for a few seconds, and avoid calling the API from every message when one cached response would do.</p></Accordion>
+
+## Webhook URL rejected
+
+<Accordion title="Why does Rankly reject my webhook URL?"><p>Webhook endpoints must be public HTTPS URLs. Localhost, private subnets, and other internal destinations are rejected so Rankly does not become an SSRF proxy.</p></Accordion>
+
+## Webhook does not fire
+
+<Accordion title="My vote webhook never arrives"><p>Check that the URL is saved correctly, the endpoint is publicly reachable, and the test webhook succeeds. If the endpoint returns a non-2xx response or times out, fix that first.</p></Accordion>
+
+## Purchase webhook issues
+
+<Accordion title="My premium purchase webhook is not being accepted"><p>For server monetization webhooks, verify the <code>X-Webhook-Signature</code> header against the raw request body and your webhook secret. If signature verification fails, do not activate premium access.</p></Accordion>
+
+<Accordion title="I received duplicate premium purchase events"><p>Treat deliveries as at-least-once and deduplicate by <code>orderId</code> plus <code>event</code>. Your handler should be idempotent so replays do not double-grant entitlements.</p></Accordion>
+
+<Accordion title="I never receive subscription.renewed or subscription.expired for server premium"><p>These lifecycle events are sent only for recurring server plans. Check that the purchased tier is weekly/monthly (not lifetime), auto-renew is enabled, and your endpoint returns 2xx quickly.</p></Accordion>
+
+<Accordion title="What should I do if subscription.revoked arrives"><p>Immediately remove premium entitlement and mark the order as revoked in your system. Revoked events usually indicate dispute/chargeback handling and should override normal active state.</p></Accordion>
+
+## Vote counted but credits were not awarded
+
+<Accordion title="Why did the vote count but no credits were added?"><p>Credits can be denied for normal reasons such as captcha failure, ad blocker detection, a server that is too new, or a server that does not meet the minimum member count. The webhook payload includes the denial reason.</p></Accordion>
+
+## Still stuck?
+
+If none of the common cases fits, check the dashboard test action first and then contact support at <a href="mailto:support@rankly.live">support@rankly.live</a>.
